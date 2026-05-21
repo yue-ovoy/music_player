@@ -7,6 +7,8 @@ const state = {
   room: localStorage.getItem("roomCode") || defaultRoom,
   uploader: localStorage.getItem("uploaderName") || "",
   supabase: null,
+  supabaseUrl: "",
+  supabaseAnonKey: "",
   cloud: false,
 };
 
@@ -16,6 +18,8 @@ const els = {
   uploaderName: document.querySelector("#uploader-name"),
   uploadForm: document.querySelector("#upload-form"),
   musicFile: document.querySelector("#music-file"),
+  selectedFiles: document.querySelector("#selected-files"),
+  uploadButton: document.querySelector("#upload-form button"),
   modeNote: document.querySelector("#mode-note"),
   refreshButton: document.querySelector("#refresh-button"),
   audio: document.querySelector("#audio-player"),
@@ -37,6 +41,33 @@ function uid() {
 
 function fmtDate(value) {
   return new Intl.DateTimeFormat("zh-CN", { month: "short", day: "numeric" }).format(new Date(value));
+}
+
+function fmtBytes(bytes) {
+  if (!bytes) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  return `${(bytes / 1024 ** index).toFixed(index ? 1 : 0)} ${units[index]}`;
+}
+
+function fileExtension(name) {
+  const match = name.match(/\.([a-z0-9]+)$/i);
+  return match ? match[1].toLowerCase() : "audio";
+}
+
+function storageSafeSegment(value) {
+  const slug = value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  if (slug) return slug.slice(0, 48);
+
+  let hash = 0;
+  for (const char of value) {
+    hash = (hash * 31 + char.codePointAt(0)) >>> 0;
+  }
+  return `room-${hash.toString(16)}`;
 }
 
 function getConfig() {
@@ -90,8 +121,10 @@ async function initSupabase() {
   const config = getConfig();
   if (!config.supabaseUrl || !config.supabaseAnonKey) return;
 
+  state.supabaseUrl = config.supabaseUrl.replace(/\/$/, "");
+  state.supabaseAnonKey = config.supabaseAnonKey;
   const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
-  state.supabase = createClient(config.supabaseUrl, config.supabaseAnonKey);
+  state.supabase = createClient(state.supabaseUrl, state.supabaseAnonKey);
   state.cloud = true;
   els.syncStatus.textContent = "云端共享";
   els.modeNote.textContent = "已连接 Supabase。你们使用同一个房间码时，上传的歌和歌单会同步共享。";
@@ -130,7 +163,47 @@ async function loadData() {
   render();
 }
 
-async function uploadSong(file) {
+function encodeStoragePath(path) {
+  return path.split("/").map((part) => encodeURIComponent(part)).join("/");
+}
+
+function uploadToSupabaseStorage(path, file, onProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    const url = `${state.supabaseUrl}/storage/v1/object/songs/${encodeStoragePath(path)}`;
+
+    xhr.open("POST", url);
+    xhr.setRequestHeader("apikey", state.supabaseAnonKey);
+    xhr.setRequestHeader("Authorization", `Bearer ${state.supabaseAnonKey}`);
+    xhr.setRequestHeader("x-upsert", "false");
+    xhr.setRequestHeader("Content-Type", file.type || "audio/wav");
+
+    xhr.upload.addEventListener("progress", (event) => {
+      if (!event.lengthComputable) return;
+      onProgress(Math.round((event.loaded / event.total) * 100));
+    });
+
+    xhr.addEventListener("load", () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        onProgress(100);
+        resolve();
+      } else {
+        let message = `上传失败：HTTP ${xhr.status}`;
+        try {
+          message = JSON.parse(xhr.responseText).message || message;
+        } catch {
+          message = xhr.responseText || message;
+        }
+        reject(new Error(message));
+      }
+    });
+    xhr.addEventListener("error", () => reject(new Error("网络连接失败，上传没有完成。")));
+    xhr.addEventListener("abort", () => reject(new Error("上传已取消。")));
+    xhr.send(file);
+  });
+}
+
+async function uploadSong(file, onProgress = () => {}) {
   const song = {
     id: uid(),
     room: state.room,
@@ -140,13 +213,8 @@ async function uploadSong(file) {
   };
 
   if (state.cloud) {
-    const path = `${state.room}/${song.id}-${file.name}`;
-    const storage = await state.supabase.storage.from("songs").upload(path, file, {
-      cacheControl: "3600",
-      upsert: false,
-      contentType: file.type || "audio/wav",
-    });
-    if (storage.error) throw storage.error;
+    const path = `${storageSafeSegment(state.room)}/${song.id}.${fileExtension(file.name)}`;
+    await uploadToSupabaseStorage(path, file, onProgress);
 
     const { data } = state.supabase.storage.from("songs").getPublicUrl(path);
     const insert = await state.supabase.from("songs").insert({
@@ -161,6 +229,7 @@ async function uploadSong(file) {
   } else {
     song.blob = file;
     song.url = URL.createObjectURL(file);
+    onProgress(100);
     await localPut("songs", song);
   }
 }
@@ -299,6 +368,28 @@ function render() {
   }
 }
 
+function renderSelectedFiles(files, statuses = {}) {
+  els.selectedFiles.innerHTML = "";
+  files.forEach((file, index) => {
+    const status = statuses[index] || { progress: 0, label: "待上传", state: "idle" };
+    const chip = document.createElement("div");
+    chip.className = `file-chip ${status.state === "done" ? "is-done" : ""} ${status.state === "error" ? "is-error" : ""}`;
+    chip.innerHTML = `
+      <div class="file-chip-top">
+        <div class="file-name"></div>
+        <div class="file-size"></div>
+      </div>
+      <div class="progress-track" aria-hidden="true"><div class="progress-bar"></div></div>
+      <div class="file-status"></div>
+    `;
+    chip.querySelector(".file-name").textContent = file.name;
+    chip.querySelector(".file-size").textContent = fmtBytes(file.size);
+    chip.querySelector(".progress-bar").style.width = `${status.progress || 0}%`;
+    chip.querySelector(".file-status").textContent = status.label;
+    els.selectedFiles.append(chip);
+  });
+}
+
 function bindEvents() {
   els.roomCode.value = state.room;
   els.uploaderName.value = state.uploader;
@@ -310,18 +401,42 @@ function bindEvents() {
 
   els.uploaderName.addEventListener("change", (event) => setUploader(event.target.value));
   els.refreshButton.addEventListener("click", loadData);
+  els.musicFile.addEventListener("change", () => renderSelectedFiles([...els.musicFile.files]));
 
   els.uploadForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     const files = [...els.musicFile.files];
     if (!files.length) return;
-    els.uploadForm.querySelector("button").textContent = "上传中...";
-    for (const file of files) {
-      await uploadSong(file);
+    const statuses = files.map(() => ({ progress: 0, label: "等待上传", state: "idle" }));
+    els.uploadButton.disabled = true;
+    els.uploadButton.textContent = "上传中...";
+    renderSelectedFiles(files, statuses);
+
+    try {
+      for (const [index, file] of files.entries()) {
+        statuses[index] = { progress: 0, label: `正在上传 ${index + 1}/${files.length}`, state: "uploading" };
+        renderSelectedFiles(files, statuses);
+        await uploadSong(file, (progress) => {
+          statuses[index] = { progress, label: `正在上传 ${index + 1}/${files.length} · ${progress}%`, state: "uploading" };
+          renderSelectedFiles(files, statuses);
+        });
+        statuses[index] = { progress: 100, label: "上传完成", state: "done" };
+        renderSelectedFiles(files, statuses);
+      }
+      els.musicFile.value = "";
+      await loadData();
+    } catch (error) {
+      const current = statuses.findIndex((item) => item.state === "uploading");
+      if (current >= 0) {
+        statuses[current] = { ...statuses[current], label: error.message, state: "error" };
+        renderSelectedFiles(files, statuses);
+      }
+      els.modeNote.textContent = `上传失败：${error.message}`;
+      console.error(error);
+    } finally {
+      els.uploadButton.disabled = false;
+      els.uploadButton.textContent = "上传到曲库";
     }
-    els.musicFile.value = "";
-    els.uploadForm.querySelector("button").textContent = "上传到曲库";
-    await loadData();
   });
 
   els.playlistForm.addEventListener("submit", async (event) => {

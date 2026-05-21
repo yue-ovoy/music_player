@@ -187,6 +187,69 @@ h1 {
   display: none;
 }
 
+.selected-files {
+  display: grid;
+  gap: 8px;
+}
+
+.selected-files:empty {
+  display: none;
+}
+
+.file-chip {
+  display: grid;
+  gap: 7px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  background: rgba(255, 253, 248, 0.86);
+}
+
+.file-chip-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.file-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.file-size,
+.file-status {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.progress-track {
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #eee5da;
+}
+
+.progress-bar {
+  width: 0%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--mint);
+  transition: width 180ms ease;
+}
+
+.file-chip.is-error .progress-bar {
+  background: var(--rose);
+}
+
+.file-chip.is-done .progress-bar {
+  background: var(--mint);
+}
+
 .primary-button,
 .secondary-button {
   min-height: 44px;
@@ -200,6 +263,12 @@ h1 {
 
 .primary-button {
   background: var(--rose);
+}
+
+.primary-button:disabled,
+.secondary-button:disabled {
+  cursor: progress;
+  opacity: 0.68;
 }
 
 .secondary-button {
