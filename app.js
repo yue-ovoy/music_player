@@ -19,6 +19,7 @@ const els = {
   musicFile: document.querySelector("#music-file"),
   selectedFiles: document.querySelector("#selected-files"),
   uploadButton: document.querySelector("#upload-form button"),
+  clearRoomButton: document.querySelector("#clear-room-button"),
   modeNote: document.querySelector("#mode-note"),
   refreshButton: document.querySelector("#refresh-button"),
   audio: document.querySelector("#audio-player"),
@@ -116,6 +117,24 @@ async function localPut(storeName, value) {
   });
 }
 
+async function localDelete(storeName, id) {
+  const db = await openLocalDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, "readwrite");
+    tx.objectStore(storeName).delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function localClearRoom() {
+  const [songs, playlists] = await Promise.all([localAll("songs"), localAll("playlists")]);
+  await Promise.all([
+    ...songs.map((song) => localDelete("songs", song.id)),
+    ...playlists.map((playlist) => localDelete("playlists", playlist.id)),
+  ]);
+}
+
 async function initSupabase() {
   const config = getConfig();
   if (!config.supabaseUrl || !config.supabaseAnonKey) return;
@@ -167,6 +186,7 @@ async function loadData() {
       uploader: song.uploader_name,
       createdAt: song.created_at,
       url: song.public_url,
+      storagePath: song.storage_path,
     }));
     state.playlists = playlistsResult.map((playlist) => ({
       id: playlist.id,
@@ -221,6 +241,26 @@ function uploadToSupabaseStorage(path, file, onProgress) {
     xhr.addEventListener("abort", () => reject(new Error("上传已取消。")));
     xhr.send(file);
   });
+}
+
+async function deleteSupabaseStorage(path) {
+  const response = await fetch(`${state.supabaseUrl}/storage/v1/object/songs/${encodeStoragePath(path)}`, {
+    method: "DELETE",
+    headers: {
+      apikey: state.supabaseAnonKey,
+      Authorization: `Bearer ${state.supabaseAnonKey}`,
+    },
+  });
+
+  if (!response.ok && response.status !== 404) {
+    let message = `删除文件失败：HTTP ${response.status}`;
+    try {
+      message = (await response.json()).message || message;
+    } catch {
+      message = (await response.text()) || message;
+    }
+    throw new Error(message);
+  }
 }
 
 async function uploadSong(file, onProgress = () => {}) {
@@ -299,6 +339,79 @@ async function addToPlaylist(songId, playlistId) {
   render();
 }
 
+async function removeSongFromPlaylists(songId) {
+  const changed = state.playlists
+    .map((playlist) => ({ ...playlist, songIds: playlist.songIds.filter((id) => id !== songId) }))
+    .filter((playlist, index) => playlist.songIds.length !== state.playlists[index].songIds.length);
+
+  if (state.cloud) {
+    await Promise.all(
+      changed.map((playlist) =>
+        supabaseRest(`playlists?id=eq.${playlist.id}`, {
+          method: "PATCH",
+          headers: { Prefer: "return=minimal" },
+          body: JSON.stringify({ song_ids: playlist.songIds }),
+        }),
+      ),
+    );
+  } else {
+    await Promise.all(changed.map((playlist) => localPut("playlists", playlist)));
+  }
+}
+
+async function deleteSong(song) {
+  if (!confirm(`确定删除《${song.title}》吗？这会从曲库和所有歌单里移除。`)) return;
+
+  await removeSongFromPlaylists(song.id);
+
+  if (state.cloud) {
+    if (song.storagePath) await deleteSupabaseStorage(song.storagePath);
+    await supabaseRest(`songs?id=eq.${song.id}`, {
+      method: "DELETE",
+      headers: { Prefer: "return=minimal" },
+    });
+  } else {
+    await localDelete("songs", song.id);
+  }
+
+  if (state.currentSong?.id === song.id) {
+    resetPlayer();
+  }
+
+  await loadData();
+}
+
+async function clearRoom() {
+  if (!confirm(`确定清空「${state.room}」这个房间吗？房间里的歌曲和歌单都会删除。`)) return;
+  if (!confirm("这个操作不能撤销。真的要继续吗？")) return;
+
+  if (state.cloud) {
+    await Promise.all(state.songs.map((song) => (song.storagePath ? deleteSupabaseStorage(song.storagePath) : null)));
+    await supabaseRest(`playlists?room_code=eq.${encodeURIComponent(state.room)}`, {
+      method: "DELETE",
+      headers: { Prefer: "return=minimal" },
+    });
+    await supabaseRest(`songs?room_code=eq.${encodeURIComponent(state.room)}`, {
+      method: "DELETE",
+      headers: { Prefer: "return=minimal" },
+    });
+  } else {
+    await localClearRoom();
+  }
+
+  resetPlayer();
+  await loadData();
+}
+
+function resetPlayer() {
+  els.audio.pause();
+  els.audio.removeAttribute("src");
+  els.audio.load();
+  state.currentSong = null;
+  els.currentTitle.textContent = "还没有播放歌曲";
+  els.currentMeta.textContent = "上传一首歌，或者从曲库点播放。";
+}
+
 function playSong(song) {
   state.currentSong = song;
   els.audio.src = song.url || URL.createObjectURL(song.blob);
@@ -320,6 +433,7 @@ function renderSong(song) {
       <select class="ghost-button" data-action="playlist">
         <option value="">加入歌单</option>
       </select>
+      <button class="ghost-button danger" type="button" data-action="delete">删除</button>
     </div>
   `;
   row.querySelector(".song-title").textContent = song.title;
@@ -334,6 +448,7 @@ function renderSong(song) {
   });
 
   row.querySelector('[data-action="play"]').addEventListener("click", () => playSong(song));
+  row.querySelector('[data-action="delete"]').addEventListener("click", () => deleteSong(song));
   select.addEventListener("change", async (event) => {
     if (!event.target.value) return;
     await addToPlaylist(song.id, event.target.value);
@@ -429,6 +544,7 @@ function bindEvents() {
 
   els.uploaderName.addEventListener("change", (event) => setUploader(event.target.value));
   els.refreshButton.addEventListener("click", loadData);
+  els.clearRoomButton.addEventListener("click", clearRoom);
   els.musicFile.addEventListener("change", () => renderSelectedFiles([...els.musicFile.files]));
 
   els.uploadForm.addEventListener("submit", async (event) => {

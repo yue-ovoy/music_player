@@ -252,7 +252,8 @@ h1 {
 }
 
 .primary-button,
-.secondary-button {
+.secondary-button,
+.danger-button {
   min-height: 44px;
   border: 0;
   border-radius: 8px;
@@ -274,6 +275,14 @@ h1 {
 
 .secondary-button {
   background: var(--mint);
+}
+
+.danger-button {
+  width: 100%;
+  margin-top: 14px;
+  background: rgba(157, 49, 72, 0.1);
+  color: var(--rose-dark);
+  border: 1px solid rgba(157, 49, 72, 0.24);
 }
 
 .mode-note {
@@ -431,6 +440,11 @@ audio {
   color: var(--ink);
   font-weight: 800;
   cursor: pointer;
+}
+
+.ghost-button.danger {
+  border-color: rgba(157, 49, 72, 0.24);
+  color: var(--rose-dark);
 }
 
 .playlist-form {
