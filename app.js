@@ -6,7 +6,6 @@ const state = {
   currentSong: null,
   room: localStorage.getItem("roomCode") || defaultRoom,
   uploader: localStorage.getItem("uploaderName") || "",
-  supabase: null,
   supabaseUrl: "",
   supabaseAnonKey: "",
   cloud: false,
@@ -123,24 +122,45 @@ async function initSupabase() {
 
   state.supabaseUrl = config.supabaseUrl.replace(/\/$/, "");
   state.supabaseAnonKey = config.supabaseAnonKey;
-  const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
-  state.supabase = createClient(state.supabaseUrl, state.supabaseAnonKey);
   state.cloud = true;
   els.syncStatus.textContent = "云端共享";
   els.modeNote.textContent = "已连接 Supabase。你们使用同一个房间码时，上传的歌和歌单会同步共享。";
 }
 
+async function supabaseRest(path, options = {}) {
+  const response = await fetch(`${state.supabaseUrl}/rest/v1/${path}`, {
+    ...options,
+    headers: {
+      apikey: state.supabaseAnonKey,
+      Authorization: `Bearer ${state.supabaseAnonKey}`,
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+  });
+
+  if (!response.ok) {
+    let message = `Supabase 请求失败：HTTP ${response.status}`;
+    try {
+      message = (await response.json()).message || message;
+    } catch {
+      message = (await response.text()) || message;
+    }
+    throw new Error(message);
+  }
+
+  if (response.status === 204) return null;
+  const text = await response.text();
+  return text ? JSON.parse(text) : null;
+}
+
 async function loadData() {
   if (state.cloud) {
     const [songsResult, playlistsResult] = await Promise.all([
-      state.supabase.from("songs").select("*").eq("room_code", state.room).order("created_at", { ascending: false }),
-      state.supabase.from("playlists").select("*").eq("room_code", state.room).order("created_at", { ascending: false }),
+      supabaseRest(`songs?select=*&room_code=eq.${encodeURIComponent(state.room)}&order=created_at.desc`),
+      supabaseRest(`playlists?select=*&room_code=eq.${encodeURIComponent(state.room)}&order=created_at.desc`),
     ]);
 
-    if (songsResult.error) throw songsResult.error;
-    if (playlistsResult.error) throw playlistsResult.error;
-
-    state.songs = songsResult.data.map((song) => ({
+    state.songs = songsResult.map((song) => ({
       id: song.id,
       room: song.room_code,
       title: song.title,
@@ -148,7 +168,7 @@ async function loadData() {
       createdAt: song.created_at,
       url: song.public_url,
     }));
-    state.playlists = playlistsResult.data.map((playlist) => ({
+    state.playlists = playlistsResult.map((playlist) => ({
       id: playlist.id,
       room: playlist.room_code,
       name: playlist.name,
@@ -215,17 +235,19 @@ async function uploadSong(file, onProgress = () => {}) {
   if (state.cloud) {
     const path = `${storageSafeSegment(state.room)}/${song.id}.${fileExtension(file.name)}`;
     await uploadToSupabaseStorage(path, file, onProgress);
-
-    const { data } = state.supabase.storage.from("songs").getPublicUrl(path);
-    const insert = await state.supabase.from("songs").insert({
-      id: song.id,
-      room_code: song.room,
-      title: song.title,
-      uploader_name: song.uploader,
-      storage_path: path,
-      public_url: data.publicUrl,
+    const publicUrl = `${state.supabaseUrl}/storage/v1/object/public/songs/${encodeStoragePath(path)}`;
+    await supabaseRest("songs", {
+      method: "POST",
+      headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({
+        id: song.id,
+        room_code: song.room,
+        title: song.title,
+        uploader_name: song.uploader,
+        storage_path: path,
+        public_url: publicUrl,
+      }),
     });
-    if (insert.error) throw insert.error;
   } else {
     song.blob = file;
     song.url = URL.createObjectURL(file);
@@ -244,13 +266,16 @@ async function createPlaylist(name) {
   };
 
   if (state.cloud) {
-    const result = await state.supabase.from("playlists").insert({
-      id: playlist.id,
-      room_code: playlist.room,
-      name: playlist.name,
-      song_ids: [],
+    await supabaseRest("playlists", {
+      method: "POST",
+      headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({
+        id: playlist.id,
+        room_code: playlist.room,
+        name: playlist.name,
+        song_ids: [],
+      }),
     });
-    if (result.error) throw result.error;
   } else {
     await localPut("playlists", playlist);
   }
@@ -262,8 +287,11 @@ async function addToPlaylist(songId, playlistId) {
   playlist.songIds = [...playlist.songIds, songId];
 
   if (state.cloud) {
-    const result = await state.supabase.from("playlists").update({ song_ids: playlist.songIds }).eq("id", playlist.id);
-    if (result.error) throw result.error;
+    await supabaseRest(`playlists?id=eq.${playlist.id}`, {
+      method: "PATCH",
+      headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({ song_ids: playlist.songIds }),
+    });
   } else {
     await localPut("playlists", playlist);
   }

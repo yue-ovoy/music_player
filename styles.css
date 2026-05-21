@@ -20,10 +20,11 @@ body {
   min-height: 100vh;
   margin: 0;
   color: var(--ink);
-  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
   background:
-    linear-gradient(120deg, rgba(255, 239, 215, 0.86), rgba(255, 248, 238, 0.94)),
-    url("https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=1600&q=80") center / cover fixed;
+    radial-gradient(circle at 16% 10%, rgba(243, 184, 75, 0.28), transparent 28%),
+    radial-gradient(circle at 82% 18%, rgba(48, 124, 114, 0.16), transparent 32%),
+    linear-gradient(120deg, #fff0dc, #fffaf2 46%, #f7efe5);
 }
 
 button,
@@ -65,7 +66,7 @@ p {
 h1 {
   max-width: 780px;
   margin-bottom: 12px;
-  font-family: "Noto Serif SC", serif;
+  font-family: "Songti SC", "STSong", "SimSun", serif;
   font-size: clamp(2.45rem, 6vw, 5.3rem);
   line-height: 1.02;
   letter-spacing: 0;
