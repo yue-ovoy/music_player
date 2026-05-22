@@ -107,10 +107,11 @@ h1 {
 }
 
 .workspace {
-  display: grid;
-  grid-template-columns: 320px minmax(0, 1fr);
-  gap: 18px;
-  align-items: start;
+  display: block;
+}
+
+.workspace[hidden] {
+  display: none;
 }
 
 .panel,
@@ -122,10 +123,14 @@ h1 {
   backdrop-filter: blur(18px);
 }
 
-.settings-panel {
+.upload-page {
+  width: min(520px, 100%);
+  margin: 18px auto 0;
   padding: 18px;
-  position: sticky;
-  top: 18px;
+}
+
+.upload-page[hidden] {
+  display: none;
 }
 
 .section-bar {
@@ -135,6 +140,12 @@ h1 {
   gap: 16px;
   margin-bottom: 14px;
   font-weight: 800;
+}
+
+.library-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .field {
@@ -280,6 +291,11 @@ h1 {
 
 .secondary-button {
   background: var(--mint);
+}
+
+.secondary-button.compact {
+  min-height: 38px;
+  padding: 0 14px;
 }
 
 .danger-button {
@@ -508,10 +524,6 @@ audio {
   .workspace,
   .now-playing {
     grid-template-columns: 1fr;
-  }
-
-  .settings-panel {
-    position: static;
   }
 
   .record {

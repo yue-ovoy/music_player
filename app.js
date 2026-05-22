@@ -14,6 +14,10 @@ const state = {
 
 const els = {
   forceUpdateButton: document.querySelector("#force-update-button"),
+  workspace: document.querySelector(".workspace"),
+  uploadPage: document.querySelector("#upload-page"),
+  openUploadButton: document.querySelector("#open-upload-button"),
+  backToLibraryButton: document.querySelector("#back-to-library-button"),
   uploaderName: document.querySelector("#uploader-name"),
   artistName: document.querySelector("#artist-name"),
   uploadForm: document.querySelector("#upload-form"),
@@ -82,6 +86,18 @@ function setUploader(value) {
 function setArtist(value) {
   state.artist = value.trim();
   localStorage.setItem("artistName", state.artist);
+}
+
+function showUploadPage() {
+  els.workspace.hidden = true;
+  els.uploadPage.hidden = false;
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function showLibraryPage() {
+  els.uploadPage.hidden = true;
+  els.workspace.hidden = false;
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 async function forceAppUpdate() {
@@ -561,6 +577,8 @@ function bindEvents() {
   els.artistName.value = state.artist;
 
   els.forceUpdateButton.addEventListener("click", forceAppUpdate);
+  els.openUploadButton.addEventListener("click", showUploadPage);
+  els.backToLibraryButton.addEventListener("click", showLibraryPage);
   els.uploaderName.addEventListener("change", (event) => setUploader(event.target.value));
   els.artistName.addEventListener("change", (event) => setArtist(event.target.value));
   els.clearRoomButton.addEventListener("click", clearRoom);
@@ -588,6 +606,7 @@ function bindEvents() {
       }
       els.musicFile.value = "";
       await loadData();
+      showLibraryPage();
     } catch (error) {
       const current = statuses.findIndex((item) => item.state === "uploading");
       if (current >= 0) {

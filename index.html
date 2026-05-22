@@ -10,9 +10,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.jpg" />
-    <link rel="stylesheet" href="./styles.css?v=20260522-artist" />
+    <link rel="stylesheet" href="./styles.css?v=20260522-uploadpage" />
     <script src="./config.js"></script>
-    <script type="module" src="./app.js?v=20260522-artist"></script>
+    <script type="module" src="./app.js?v=20260522-uploadpage"></script>
   </head>
   <body>
     <main class="shell">
@@ -26,34 +26,6 @@
       </section>
 
       <section class="workspace">
-        <aside class="panel settings-panel">
-          <label class="field">
-            <span>你的名字</span>
-            <input id="uploader-name" type="text" maxlength="24" placeholder="比如 Yue" />
-          </label>
-
-          <label class="field">
-            <span>歌手</span>
-            <input id="artist-name" type="text" maxlength="60" placeholder="比如 林俊杰" />
-          </label>
-
-          <form class="upload-card" id="upload-form">
-            <label class="dropzone" for="music-file">
-              <input id="music-file" type="file" accept="audio/*,.wav,.mp3,.m4a,.flac" multiple />
-              <strong>选择音乐文件</strong>
-              <span>支持 wav / mp3 / m4a / flac</span>
-            </label>
-            <div class="selected-files" id="selected-files" aria-live="polite"></div>
-            <button class="primary-button" type="submit">上传到曲库</button>
-          </form>
-
-          <div class="mode-note" id="mode-note">
-            当前数据只保存在这台电脑。配置 Supabase 后，你们两个人打开同一个链接就会共享曲库。
-          </div>
-
-          <button class="danger-button" id="clear-room-button" type="button">清空所有内容</button>
-        </aside>
-
         <section class="main-panel">
           <div class="now-playing">
             <div class="record">
@@ -76,7 +48,10 @@
           <section class="view active" id="library-view" aria-label="曲库">
             <div class="section-bar">
               <h3>共享曲库</h3>
-              <span id="song-count">0 首</span>
+              <div class="library-actions">
+                <span id="song-count">0 首</span>
+                <button class="secondary-button compact" id="open-upload-button" type="button">上传歌曲</button>
+              </div>
             </div>
             <div class="song-list" id="song-list"></div>
           </section>
@@ -89,6 +64,39 @@
             <div class="playlist-grid" id="playlist-grid"></div>
           </section>
         </section>
+      </section>
+
+      <section class="panel upload-page" id="upload-page" hidden>
+        <div class="section-bar">
+          <h3>上传歌曲</h3>
+          <button class="ghost-button" id="back-to-library-button" type="button">返回曲库</button>
+        </div>
+
+        <label class="field">
+          <span>你的名字</span>
+          <input id="uploader-name" type="text" maxlength="24" placeholder="比如 Yue" />
+        </label>
+
+        <label class="field">
+          <span>歌手</span>
+          <input id="artist-name" type="text" maxlength="60" placeholder="比如 林俊杰" />
+        </label>
+
+        <form class="upload-card" id="upload-form">
+          <label class="dropzone" for="music-file">
+            <input id="music-file" type="file" accept="audio/*,.wav,.mp3,.m4a,.flac" multiple />
+            <strong>选择音乐文件</strong>
+            <span>支持 wav / mp3 / m4a / flac</span>
+          </label>
+          <div class="selected-files" id="selected-files" aria-live="polite"></div>
+          <button class="primary-button" type="submit">上传到曲库</button>
+        </form>
+
+        <div class="mode-note" id="mode-note">
+          当前数据只保存在这台设备。配置 Supabase 后，你们两个人打开同一个链接就会共享曲库。
+        </div>
+
+        <button class="danger-button" id="clear-room-button" type="button">清空所有内容</button>
       </section>
     </main>
   </body>
