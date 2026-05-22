@@ -80,7 +80,7 @@ function setUploader(value) {
 
 async function forceAppUpdate() {
   els.forceUpdateButton.disabled = true;
-  els.forceUpdateButton.textContent = "更新中";
+  els.forceUpdateButton.textContent = "…";
 
   if ("serviceWorker" in navigator) {
     const registrations = await navigator.serviceWorker.getRegistrations();

@@ -95,17 +95,25 @@ h1 {
   flex: 0 0 auto;
   gap: 8px;
   align-items: center;
+  justify-content: end;
 }
 
 .update-button {
-  min-height: 38px;
-  border: 1px solid rgba(48, 124, 114, 0.24);
-  border-radius: 999px;
-  padding: 0 14px;
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(157, 49, 72, 0.2);
+  border-radius: 50%;
   background: rgba(255, 255, 255, 0.78);
-  color: var(--mint);
+  color: var(--rose-dark);
+  font-size: 1.1rem;
   font-weight: 800;
+  line-height: 1;
   cursor: pointer;
+}
+
+.update-button:disabled {
+  cursor: progress;
+  opacity: 0.68;
 }
 
 .workspace {
