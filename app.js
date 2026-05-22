@@ -26,6 +26,7 @@ const els = {
   avatarCropper: document.querySelector("#avatar-cropper"),
   avatarCropFrame: document.querySelector("#avatar-crop-frame"),
   avatarCropImage: document.querySelector("#avatar-crop-image"),
+  avatarCropStatus: document.querySelector("#avatar-crop-status"),
   avatarZoom: document.querySelector("#avatar-zoom"),
   saveProfileButton: document.querySelector("#save-profile-button"),
   workspace: document.querySelector(".workspace"),
@@ -63,6 +64,7 @@ const cropState = {
   startY: 0,
   startOffsetX: 0,
   startOffsetY: 0,
+  reader: null,
 };
 
 function uid() {
@@ -208,38 +210,53 @@ function renderAvatarCrop() {
   });
 }
 
-function resetAvatarCrop() {
+function resetAvatarCrop(clearInput = true) {
   if (cropState.objectUrl) URL.revokeObjectURL(cropState.objectUrl);
+  if (cropState.reader?.readyState === 1) cropState.reader.abort();
   cropState.image = null;
   cropState.objectUrl = "";
+  cropState.reader = null;
   cropState.scale = 1;
   cropState.offsetX = 0;
   cropState.offsetY = 0;
   cropState.dragging = false;
   els.avatarCropper.hidden = true;
   els.avatarCropImage.removeAttribute("src");
+  els.avatarCropStatus.textContent = "图片读取中...";
   els.avatarZoom.value = "1";
-  els.profileAvatarFile.value = "";
+  if (clearInput) els.profileAvatarFile.value = "";
 }
 
 function prepareAvatarCrop(file) {
-  resetAvatarCrop();
+  resetAvatarCrop(false);
   if (!file) return;
 
+  els.avatarCropper.hidden = false;
+  els.avatarCropStatus.textContent = "图片读取中...";
+
   const image = new Image();
-  const objectUrl = URL.createObjectURL(file);
   image.onload = () => {
     cropState.image = image;
-    cropState.objectUrl = objectUrl;
-    els.avatarCropImage.src = objectUrl;
-    els.avatarCropper.hidden = false;
+    cropState.reader = null;
+    els.avatarCropStatus.textContent = "拖动图片调整位置";
     renderAvatarCrop();
   };
   image.onerror = () => {
-    URL.revokeObjectURL(objectUrl);
-    alert("这张图片没有读取成功，可以换一张试试。");
+    cropState.reader = null;
+    els.avatarCropStatus.textContent = "这张图片没有读取成功，可以换一张试试";
   };
-  image.src = objectUrl;
+
+  const reader = new FileReader();
+  cropState.reader = reader;
+  reader.onload = () => {
+    els.avatarCropImage.src = reader.result;
+    image.src = reader.result;
+  };
+  reader.onerror = () => {
+    cropState.reader = null;
+    els.avatarCropStatus.textContent = "这张图片没有读取成功，可以换一张试试";
+  };
+  reader.readAsDataURL(file);
 }
 
 function createCroppedAvatarBlob() {
