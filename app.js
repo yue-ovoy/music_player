@@ -23,6 +23,10 @@ const els = {
   profileOptions: document.querySelectorAll(".profile-option"),
   profileDisplayName: document.querySelector("#profile-display-name"),
   profileAvatarFile: document.querySelector("#profile-avatar-file"),
+  avatarCropper: document.querySelector("#avatar-cropper"),
+  avatarCropFrame: document.querySelector("#avatar-crop-frame"),
+  avatarCropImage: document.querySelector("#avatar-crop-image"),
+  avatarZoom: document.querySelector("#avatar-zoom"),
   saveProfileButton: document.querySelector("#save-profile-button"),
   workspace: document.querySelector(".workspace"),
   uploadPage: document.querySelector("#upload-page"),
@@ -46,6 +50,19 @@ const els = {
   playlistForm: document.querySelector("#playlist-form"),
   playlistName: document.querySelector("#playlist-name"),
   playlistGrid: document.querySelector("#playlist-grid"),
+};
+
+const cropState = {
+  image: null,
+  objectUrl: "",
+  scale: 1,
+  offsetX: 0,
+  offsetY: 0,
+  dragging: false,
+  startX: 0,
+  startY: 0,
+  startOffsetX: 0,
+  startOffsetY: 0,
 };
 
 function uid() {
@@ -158,11 +175,108 @@ async function loadProfiles() {
 function selectProfile(id) {
   state.currentProfileId = id;
   localStorage.setItem("currentProfileId", id);
+  resetAvatarCrop();
   renderProfile();
 }
 
+function cropFrameSize() {
+  return els.avatarCropFrame.getBoundingClientRect().width || 220;
+}
+
+function avatarMetrics() {
+  if (!cropState.image) return null;
+  const frame = cropFrameSize();
+  const coverScale = Math.max(frame / cropState.image.naturalWidth, frame / cropState.image.naturalHeight);
+  const width = cropState.image.naturalWidth * coverScale * cropState.scale;
+  const height = cropState.image.naturalHeight * coverScale * cropState.scale;
+  const minX = Math.min(0, frame - width);
+  const minY = Math.min(0, frame - height);
+  const left = Math.min(0, Math.max(minX, (frame - width) / 2 + cropState.offsetX));
+  const top = Math.min(0, Math.max(minY, (frame - height) / 2 + cropState.offsetY));
+  return { frame, width, height, left, top };
+}
+
+function renderAvatarCrop() {
+  const metrics = avatarMetrics();
+  if (!metrics) return;
+  cropState.offsetX = metrics.left - (metrics.frame - metrics.width) / 2;
+  cropState.offsetY = metrics.top - (metrics.frame - metrics.height) / 2;
+  Object.assign(els.avatarCropImage.style, {
+    width: `${metrics.width}px`,
+    height: `${metrics.height}px`,
+    transform: `translate(${metrics.left}px, ${metrics.top}px)`,
+  });
+}
+
+function resetAvatarCrop() {
+  if (cropState.objectUrl) URL.revokeObjectURL(cropState.objectUrl);
+  cropState.image = null;
+  cropState.objectUrl = "";
+  cropState.scale = 1;
+  cropState.offsetX = 0;
+  cropState.offsetY = 0;
+  cropState.dragging = false;
+  els.avatarCropper.hidden = true;
+  els.avatarCropImage.removeAttribute("src");
+  els.avatarZoom.value = "1";
+  els.profileAvatarFile.value = "";
+}
+
+function prepareAvatarCrop(file) {
+  resetAvatarCrop();
+  if (!file) return;
+
+  const image = new Image();
+  const objectUrl = URL.createObjectURL(file);
+  image.onload = () => {
+    cropState.image = image;
+    cropState.objectUrl = objectUrl;
+    els.avatarCropImage.src = objectUrl;
+    els.avatarCropper.hidden = false;
+    renderAvatarCrop();
+  };
+  image.onerror = () => {
+    URL.revokeObjectURL(objectUrl);
+    alert("这张图片没有读取成功，可以换一张试试。");
+  };
+  image.src = objectUrl;
+}
+
+function createCroppedAvatarBlob() {
+  if (!cropState.image) return Promise.resolve(null);
+  const metrics = avatarMetrics();
+  const outputSize = 512;
+  const multiplier = outputSize / metrics.frame;
+  const canvas = document.createElement("canvas");
+  canvas.width = outputSize;
+  canvas.height = outputSize;
+
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#fff8ef";
+  ctx.fillRect(0, 0, outputSize, outputSize);
+  ctx.drawImage(
+    cropState.image,
+    metrics.left * multiplier,
+    metrics.top * multiplier,
+    metrics.width * multiplier,
+    metrics.height * multiplier,
+  );
+
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.9);
+  });
+}
+
+function blobToDataUrl(blob) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.readAsDataURL(blob);
+  });
+}
+
 async function uploadAvatar(file, profileId) {
-  const path = `${profileId}-${Date.now()}.${fileExtension(file.name)}`;
+  const path = `${profileId}-${Date.now()}.jpg`;
   await uploadToSupabaseStorage("avatars", path, file, () => {}, true);
   return `${state.supabaseUrl}/storage/v1/object/public/avatars/${encodeStoragePath(path)}`;
 }
@@ -175,9 +289,11 @@ async function saveProfile() {
   els.saveProfileButton.textContent = "保存中...";
 
   try {
-    const file = els.profileAvatarFile.files[0];
+    const file = await createCroppedAvatarBlob();
     if (file && state.cloud) {
       avatarUrl = await uploadAvatar(file, state.currentProfileId);
+    } else if (file) {
+      avatarUrl = await blobToDataUrl(file);
     }
 
     if (state.cloud) {
@@ -193,7 +309,7 @@ async function saveProfile() {
       );
       renderProfile();
     }
-    els.profileAvatarFile.value = "";
+    resetAvatarCrop();
   } finally {
     els.saveProfileButton.disabled = false;
     els.saveProfileButton.textContent = "保存资料";
@@ -703,6 +819,32 @@ function bindEvents() {
   });
   els.profileOptions.forEach((button) => {
     button.addEventListener("click", () => selectProfile(button.dataset.profileId));
+  });
+  els.profileAvatarFile.addEventListener("change", () => prepareAvatarCrop(els.profileAvatarFile.files[0]));
+  els.avatarZoom.addEventListener("input", (event) => {
+    cropState.scale = Number(event.target.value);
+    renderAvatarCrop();
+  });
+  els.avatarCropFrame.addEventListener("pointerdown", (event) => {
+    if (!cropState.image) return;
+    cropState.dragging = true;
+    cropState.startX = event.clientX;
+    cropState.startY = event.clientY;
+    cropState.startOffsetX = cropState.offsetX;
+    cropState.startOffsetY = cropState.offsetY;
+    els.avatarCropFrame.setPointerCapture(event.pointerId);
+  });
+  els.avatarCropFrame.addEventListener("pointermove", (event) => {
+    if (!cropState.dragging) return;
+    cropState.offsetX = cropState.startOffsetX + event.clientX - cropState.startX;
+    cropState.offsetY = cropState.startOffsetY + event.clientY - cropState.startY;
+    renderAvatarCrop();
+  });
+  els.avatarCropFrame.addEventListener("pointerup", () => {
+    cropState.dragging = false;
+  });
+  els.avatarCropFrame.addEventListener("pointercancel", () => {
+    cropState.dragging = false;
   });
   els.saveProfileButton.addEventListener("click", saveProfile);
   els.openUploadButton.addEventListener("click", showUploadPage);

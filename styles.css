@@ -101,6 +101,57 @@ input {
   color: var(--rose-dark);
 }
 
+.avatar-cropper {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  margin: 14px 0 16px;
+}
+
+.avatar-cropper[hidden] {
+  display: none;
+}
+
+.avatar-crop-frame {
+  position: relative;
+  width: min(220px, 70vw);
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 2px solid rgba(201, 81, 105, 0.34);
+  border-radius: 50%;
+  background: #fff8ef;
+  cursor: grab;
+  touch-action: none;
+}
+
+.avatar-crop-frame:active {
+  cursor: grabbing;
+}
+
+.avatar-crop-frame img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  max-width: none;
+  user-select: none;
+  pointer-events: none;
+}
+
+.range-field {
+  display: grid;
+  grid-template-columns: auto minmax(160px, 1fr);
+  align-items: center;
+  width: min(320px, 100%);
+  gap: 12px;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.range-field input {
+  width: 100%;
+  accent-color: var(--rose);
+}
+
 .eyebrow {
   margin: 0 0 8px;
   color: var(--rose-dark);
