@@ -13,8 +13,14 @@ const state = {
   cloud: false,
 };
 
+let deferredInstallPrompt = null;
+
 const els = {
   forceUpdateButton: document.querySelector("#force-update-button"),
+  installAppButton: document.querySelector("#install-app-button"),
+  installTip: document.querySelector("#install-tip"),
+  installTipText: document.querySelector("#install-tip-text"),
+  closeInstallTip: document.querySelector("#close-install-tip"),
   profileButton: document.querySelector("#profile-button"),
   profileAvatar: document.querySelector("#profile-avatar"),
   profileName: document.querySelector("#profile-name"),
@@ -362,6 +368,51 @@ async function forceAppUpdate() {
   const url = new URL(window.location.href);
   url.searchParams.set("updated", Date.now().toString());
   window.location.replace(url.toString());
+}
+
+function isStandaloneApp() {
+  return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+}
+
+function installGuideText() {
+  const ua = navigator.userAgent;
+  if (/MicroMessenger/i.test(ua)) {
+    return "请先点右上角菜单，在浏览器打开；再点浏览器菜单，选择“添加到主屏幕”或“安装应用”。";
+  }
+  if (/Android/i.test(ua)) {
+    return "请点浏览器右上角菜单，选择“添加到主屏幕”或“安装应用”。Chrome、Edge、三星浏览器一般都支持。";
+  }
+  if (/iPhone|iPad|iPod/i.test(ua)) {
+    return "请用 Safari 打开，点分享按钮，再选择“添加到主屏幕”。";
+  }
+  return "请点浏览器菜单，选择“添加到主屏幕”或“安装应用”。";
+}
+
+function updateInstallButton() {
+  els.installAppButton.hidden = isStandaloneApp();
+}
+
+function showInstallTip(message = installGuideText()) {
+  els.installTipText.textContent = message;
+  els.installTip.hidden = false;
+}
+
+async function installApp() {
+  els.installTip.hidden = true;
+
+  if (!deferredInstallPrompt) {
+    showInstallTip();
+    return;
+  }
+
+  deferredInstallPrompt.prompt();
+  const choice = await deferredInstallPrompt.userChoice;
+  deferredInstallPrompt = null;
+  updateInstallButton();
+
+  if (choice.outcome !== "accepted") {
+    showInstallTip("如果安装弹窗没有完成，也可以点浏览器菜单，选择“添加到主屏幕”或“安装应用”。");
+  }
 }
 
 function openLocalDb() {
@@ -828,6 +879,27 @@ function bindEvents() {
   els.artistName.value = state.artist;
 
   els.forceUpdateButton.addEventListener("click", forceAppUpdate);
+  els.installAppButton.addEventListener("click", installApp);
+  els.closeInstallTip.addEventListener("click", () => {
+    els.installTip.hidden = true;
+  });
+  window.addEventListener("beforeinstallprompt", (event) => {
+    event.preventDefault();
+    deferredInstallPrompt = event;
+    updateInstallButton();
+  });
+  window.addEventListener("appinstalled", () => {
+    deferredInstallPrompt = null;
+    els.installTip.hidden = true;
+    updateInstallButton();
+  });
+  const standaloneQuery = window.matchMedia("(display-mode: standalone)");
+  if (standaloneQuery.addEventListener) {
+    standaloneQuery.addEventListener("change", updateInstallButton);
+  } else if (standaloneQuery.addListener) {
+    standaloneQuery.addListener(updateInstallButton);
+  }
+  updateInstallButton();
   els.profileButton.addEventListener("click", () => {
     els.profilePanel.hidden = !els.profilePanel.hidden;
   });
