@@ -900,11 +900,7 @@ function playNextInQueue() {
   } else if (state.playQueue.mode === "repeatOne") {
     state.playQueue.currentIndex = Math.max(0, state.playQueue.currentIndex);
   } else {
-    state.playQueue.currentIndex += 1;
-    if (state.playQueue.currentIndex >= songs.length) {
-      state.playQueue = null;
-      return;
-    }
+    state.playQueue.currentIndex = (state.playQueue.currentIndex + 1) % songs.length;
   }
 
   playSong(songs[state.playQueue.currentIndex], { clearQueue: false });
@@ -930,7 +926,7 @@ function playPreviousInQueue() {
   } else if (state.playQueue.mode === "repeatOne") {
     state.playQueue.currentIndex = Math.max(0, state.playQueue.currentIndex);
   } else {
-    state.playQueue.currentIndex = Math.max(0, state.playQueue.currentIndex - 1);
+    state.playQueue.currentIndex = (state.playQueue.currentIndex - 1 + songs.length) % songs.length;
   }
 
   playSong(songs[state.playQueue.currentIndex], { clearQueue: false });
