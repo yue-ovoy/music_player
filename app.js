@@ -63,6 +63,7 @@ const els = {
   views: document.querySelectorAll(".view"),
   songList: document.querySelector("#song-list"),
   songCount: document.querySelector("#song-count"),
+  libraryPlaybackActions: document.querySelector("#library-playback-actions"),
   playlistForm: document.querySelector("#playlist-form"),
   playlistName: document.querySelector("#playlist-name"),
   playlistGrid: document.querySelector("#playlist-grid"),
@@ -840,14 +841,12 @@ function playSong(song, options = {}) {
   updatePlayerControls();
 }
 
-function playPlaylist(playlist, mode) {
-  const songs = playlist.songIds.map((id) => state.songs.find((song) => song.id === id)).filter(Boolean);
+function playSongCollection(name, songs, mode) {
   if (!songs.length) return;
-
   const firstIndex = mode === "shuffle" ? Math.floor(Math.random() * songs.length) : 0;
   state.playQueue = {
-    id: playlist.id,
-    name: playlist.name,
+    id: name,
+    name,
     mode,
     songIds: songs.map((song) => song.id),
     currentIndex: firstIndex,
@@ -922,6 +921,46 @@ function togglePlayback() {
   }
 }
 
+function playbackButtonsHtml() {
+  return `
+    <button class="icon-button" type="button" data-action="play-order" title="顺序播放" aria-label="顺序播放">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4 7h10M4 12h10M4 17h8"></path>
+        <path d="m17 8 3 4-3 4"></path>
+      </svg>
+    </button>
+    <button class="icon-button" type="button" data-action="play-shuffle" title="随机播放" aria-label="随机播放">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4 7h3c4 0 5 10 9 10h4"></path>
+        <path d="M4 17h3c1.8 0 3-1.8 4.2-3.8"></path>
+        <path d="m17 4 3 3-3 3"></path>
+        <path d="m17 14 3 3-3 3"></path>
+      </svg>
+    </button>
+    <button class="icon-button" type="button" data-action="play-repeat-one" title="单曲循环" aria-label="单曲循环">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M17 2l4 4-4 4"></path>
+        <path d="M3 11V9a3 3 0 0 1 3-3h15"></path>
+        <path d="M7 22l-4-4 4-4"></path>
+        <path d="M21 13v2a3 3 0 0 1-3 3H3"></path>
+        <path d="M12 9v6"></path>
+      </svg>
+    </button>
+  `;
+}
+
+function bindPlaybackButtons(container, getSongs, name, stopSummary = false) {
+  container.querySelectorAll(".icon-button").forEach((button) => {
+    button.disabled = !getSongs().length;
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      if (stopSummary) event.stopPropagation();
+      const mode = event.currentTarget.dataset.action.replace("play-", "").replace("repeat-one", "repeatOne");
+      playSongCollection(name, getSongs(), mode);
+    });
+  });
+}
+
 function renderSong(song) {
   const row = document.createElement("article");
   row.className = "song-row";
@@ -969,53 +1008,14 @@ function renderPlaylist(playlist) {
       <span class="playlist-name"></span>
       <span class="playlist-count"></span>
       <span class="playlist-actions">
-        <button class="icon-button" type="button" data-action="play-order" title="顺序播放" aria-label="顺序播放">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M4 7h10M4 12h10M4 17h8"></path>
-            <path d="m17 8 3 4-3 4"></path>
-          </svg>
-        </button>
-        <button class="icon-button" type="button" data-action="play-shuffle" title="随机播放" aria-label="随机播放">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M4 7h3c4 0 5 10 9 10h4"></path>
-            <path d="M4 17h3c1.8 0 3-1.8 4.2-3.8"></path>
-            <path d="m17 4 3 3-3 3"></path>
-            <path d="m17 14 3 3-3 3"></path>
-          </svg>
-        </button>
-        <button class="icon-button" type="button" data-action="play-repeat-one" title="单曲循环" aria-label="单曲循环">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M17 2l4 4-4 4"></path>
-            <path d="M3 11V9a3 3 0 0 1 3-3h15"></path>
-            <path d="M7 22l-4-4 4-4"></path>
-            <path d="M21 13v2a3 3 0 0 1-3 3H3"></path>
-            <path d="M12 9v6"></path>
-          </svg>
-        </button>
+        ${playbackButtonsHtml()}
       </span>
     </summary>
     <ul></ul>
   `;
   card.querySelector(".playlist-name").textContent = playlist.name;
   card.querySelector(".playlist-count").textContent = `${songs.length} 首`;
-  card.querySelectorAll(".playlist-actions button").forEach((button) => {
-    button.disabled = !songs.length;
-  });
-  card.querySelector('[data-action="play-order"]').addEventListener("click", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    playPlaylist(playlist, "order");
-  });
-  card.querySelector('[data-action="play-shuffle"]').addEventListener("click", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    playPlaylist(playlist, "shuffle");
-  });
-  card.querySelector('[data-action="play-repeat-one"]').addEventListener("click", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    playPlaylist(playlist, "repeatOne");
-  });
+  bindPlaybackButtons(card.querySelector(".playlist-actions"), () => songs, playlist.name, true);
   const list = card.querySelector("ul");
 
   if (!songs.length) {
@@ -1047,6 +1047,8 @@ function renderPlaylist(playlist) {
 
 function render() {
   els.songCount.textContent = `${state.songs.length} 首`;
+  els.libraryPlaybackActions.innerHTML = playbackButtonsHtml();
+  bindPlaybackButtons(els.libraryPlaybackActions, () => state.songs, "共享曲库");
   els.songList.innerHTML = "";
   els.playlistGrid.innerHTML = "";
 

@@ -10,9 +10,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.jpg" />
-    <link rel="stylesheet" href="./styles.css?v=20260522-progress-bar" />
+    <link rel="stylesheet" href="./styles.css?v=20260522-library-controls" />
     <script src="./config.js"></script>
-    <script type="module" src="./app.js?v=20260522-progress-bar"></script>
+    <script type="module" src="./app.js?v=20260522-library-controls"></script>
   </head>
   <body>
     <main class="shell">
@@ -123,6 +123,7 @@
               <h3>共享曲库</h3>
               <div class="library-actions">
                 <span id="song-count">0 首</span>
+                <div class="playback-actions" id="library-playback-actions" aria-label="曲库播放控制"></div>
                 <button class="secondary-button compact" id="open-upload-button" type="button">上传歌曲</button>
               </div>
             </div>

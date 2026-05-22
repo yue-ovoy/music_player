@@ -800,6 +800,11 @@ audio {
   gap: 6px;
 }
 
+.playback-actions {
+  display: flex;
+  gap: 6px;
+}
+
 .playlist-card ul {
   display: grid;
   gap: 8px;
@@ -860,5 +865,10 @@ audio {
 
   .playlist-actions {
     width: 100%;
+  }
+
+  .library-actions {
+    width: 100%;
+    justify-content: flex-start;
   }
 }
