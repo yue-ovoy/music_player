@@ -2,6 +2,7 @@ create table if not exists public.songs (
   id uuid primary key,
   room_code text not null,
   title text not null,
+  artist text,
   uploader_name text not null default '匿名',
   storage_path text not null,
   public_url text not null,
@@ -18,6 +19,8 @@ create table if not exists public.playlists (
 
 create index if not exists songs_room_code_idx on public.songs (room_code, created_at desc);
 create index if not exists playlists_room_code_idx on public.playlists (room_code, created_at desc);
+
+alter table public.songs add column if not exists artist text;
 
 alter table public.songs enable row level security;
 alter table public.playlists enable row level security;

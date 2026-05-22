@@ -6,6 +6,7 @@ const state = {
   currentSong: null,
   room: defaultRoom,
   uploader: localStorage.getItem("uploaderName") || "",
+  artist: localStorage.getItem("artistName") || "",
   supabaseUrl: "",
   supabaseAnonKey: "",
   cloud: false,
@@ -14,6 +15,7 @@ const state = {
 const els = {
   forceUpdateButton: document.querySelector("#force-update-button"),
   uploaderName: document.querySelector("#uploader-name"),
+  artistName: document.querySelector("#artist-name"),
   uploadForm: document.querySelector("#upload-form"),
   musicFile: document.querySelector("#music-file"),
   selectedFiles: document.querySelector("#selected-files"),
@@ -75,6 +77,11 @@ function getConfig() {
 function setUploader(value) {
   state.uploader = value.trim();
   localStorage.setItem("uploaderName", state.uploader);
+}
+
+function setArtist(value) {
+  state.artist = value.trim();
+  localStorage.setItem("artistName", state.artist);
 }
 
 async function forceAppUpdate() {
@@ -194,6 +201,7 @@ async function loadData() {
       id: song.id,
       room: song.room_code,
       title: song.title,
+      artist: song.artist || "",
       uploader: song.uploader_name,
       createdAt: song.created_at,
       url: song.public_url,
@@ -207,7 +215,9 @@ async function loadData() {
       createdAt: playlist.created_at,
     }));
   } else {
-    state.songs = (await localAll("songs")).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    state.songs = (await localAll("songs"))
+      .map((song) => ({ ...song, artist: song.artist || "" }))
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     state.playlists = (await localAll("playlists")).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   }
 
@@ -279,6 +289,7 @@ async function uploadSong(file, onProgress = () => {}) {
     id: uid(),
     room: state.room,
     title: file.name.replace(/\.[^.]+$/, ""),
+    artist: state.artist || "未知歌手",
     uploader: state.uploader || "匿名",
     createdAt: new Date().toISOString(),
   };
@@ -294,6 +305,7 @@ async function uploadSong(file, onProgress = () => {}) {
         id: song.id,
         room_code: song.room,
         title: song.title,
+        artist: song.artist,
         uploader_name: song.uploader,
         storage_path: path,
         public_url: publicUrl,
@@ -428,7 +440,7 @@ function playSong(song) {
   els.audio.src = song.url || URL.createObjectURL(song.blob);
   els.audio.play();
   els.currentTitle.textContent = song.title;
-  els.currentMeta.textContent = `${song.uploader} 上传 · ${fmtDate(song.createdAt)}`;
+  els.currentMeta.textContent = `${song.artist || "未知歌手"} · ${song.uploader} 上传 · ${fmtDate(song.createdAt)}`;
 }
 
 function renderSong(song) {
@@ -448,7 +460,7 @@ function renderSong(song) {
     </div>
   `;
   row.querySelector(".song-title").textContent = song.title;
-  row.querySelector(".song-meta").textContent = `${song.uploader} · ${fmtDate(song.createdAt)}`;
+  row.querySelector(".song-meta").textContent = `${song.artist || "未知歌手"} · ${song.uploader} · ${fmtDate(song.createdAt)}`;
 
   const select = row.querySelector("select");
   state.playlists.forEach((playlist) => {
@@ -496,7 +508,7 @@ function renderPlaylist(playlist) {
       <button class="ghost-button" type="button">播放</button>
     `;
     item.querySelector(".song-title").textContent = song.title;
-    item.querySelector(".song-meta").textContent = song.uploader;
+    item.querySelector(".song-meta").textContent = `${song.artist || "未知歌手"} · ${song.uploader}`;
     item.querySelector("button").addEventListener("click", () => playSong(song));
     list.append(item);
   });
@@ -546,9 +558,11 @@ function renderSelectedFiles(files, statuses = {}) {
 
 function bindEvents() {
   els.uploaderName.value = state.uploader;
+  els.artistName.value = state.artist;
 
   els.forceUpdateButton.addEventListener("click", forceAppUpdate);
   els.uploaderName.addEventListener("change", (event) => setUploader(event.target.value));
+  els.artistName.addEventListener("change", (event) => setArtist(event.target.value));
   els.clearRoomButton.addEventListener("click", clearRoom);
   els.musicFile.addEventListener("change", () => renderSelectedFiles([...els.musicFile.files]));
 
