@@ -844,6 +844,18 @@ function playSong(song, options = {}) {
   updatePlayerControls();
 }
 
+function playSongInCollection(song, name, songs) {
+  const index = songs.findIndex((item) => item.id === song.id);
+  state.playQueue = {
+    id: name,
+    name,
+    mode: state.playMode,
+    songIds: songs.map((item) => item.id),
+    currentIndex: Math.max(0, index),
+  };
+  playSong(song, { clearQueue: false });
+}
+
 function setPlaybackMode(name, songs, mode) {
   state.playMode = mode;
   localStorage.setItem("playMode", mode);
@@ -1006,7 +1018,7 @@ function renderSong(song) {
     select.append(option);
   });
 
-  row.querySelector('[data-action="play"]').addEventListener("click", () => playSong(song));
+  row.querySelector('[data-action="play"]').addEventListener("click", () => playSongInCollection(song, "共享曲库", state.songs));
   row.querySelector('[data-action="delete"]').addEventListener("click", () => deleteSong(song));
   select.addEventListener("change", async (event) => {
     if (!event.target.value) return;
@@ -1056,7 +1068,7 @@ function renderPlaylist(playlist) {
     `;
     item.querySelector(".song-title").textContent = song.title;
     item.querySelector(".song-meta").textContent = `${song.artist || "未知歌手"} · ${song.uploader}`;
-    item.querySelector("button").addEventListener("click", () => playSong(song));
+    item.querySelector("button").addEventListener("click", () => playSongInCollection(song, playlist.name, songs));
     list.append(item);
   });
 
