@@ -6,6 +6,7 @@ const state = {
   playlists: [],
   profiles: [],
   currentSong: null,
+  playQueue: null,
   room: defaultRoom,
   currentProfileId: savedProfileId || "shuishui",
   artist: localStorage.getItem("artistName") || "",
@@ -753,16 +754,74 @@ function resetPlayer() {
   els.audio.removeAttribute("src");
   els.audio.load();
   state.currentSong = null;
+  state.playQueue = null;
   els.currentTitle.textContent = "还没有播放歌曲";
   els.currentMeta.textContent = "上传一首歌，或者从曲库点播放。";
 }
 
-function playSong(song) {
+function playbackMeta(song) {
+  const base = `${song.artist || "未知歌手"} · ${song.uploader} 上传 · ${fmtDate(song.createdAt)}`;
+  if (!state.playQueue) return base;
+  const mode = state.playQueue.mode === "shuffle" ? "随机播放" : "顺序播放";
+  const index = state.playQueue.songIds.indexOf(song.id);
+  const position = index >= 0 ? ` · ${index + 1}/${state.playQueue.songIds.length}` : "";
+  return `${base} · ${state.playQueue.name}${position} · ${mode}`;
+}
+
+function playSong(song, options = {}) {
+  if (options.clearQueue !== false) {
+    state.playQueue = null;
+  }
   state.currentSong = song;
   els.audio.src = song.url || URL.createObjectURL(song.blob);
   els.audio.play();
   els.currentTitle.textContent = song.title;
-  els.currentMeta.textContent = `${song.artist || "未知歌手"} · ${song.uploader} 上传 · ${fmtDate(song.createdAt)}`;
+  els.currentMeta.textContent = playbackMeta(song);
+}
+
+function playPlaylist(playlist, mode) {
+  const songs = playlist.songIds.map((id) => state.songs.find((song) => song.id === id)).filter(Boolean);
+  if (!songs.length) return;
+
+  const firstIndex = mode === "shuffle" ? Math.floor(Math.random() * songs.length) : 0;
+  state.playQueue = {
+    id: playlist.id,
+    name: playlist.name,
+    mode,
+    songIds: songs.map((song) => song.id),
+    currentIndex: firstIndex,
+  };
+  playSong(songs[firstIndex], { clearQueue: false });
+}
+
+function playNextInQueue() {
+  if (!state.playQueue) return;
+
+  const songs = state.playQueue.songIds.map((id) => state.songs.find((song) => song.id === id)).filter(Boolean);
+  if (!songs.length) {
+    resetPlayer();
+    return;
+  }
+
+  if (state.playQueue.mode === "shuffle") {
+    if (songs.length === 1) {
+      state.playQueue.currentIndex = 0;
+    } else {
+      let nextIndex = state.playQueue.currentIndex;
+      while (nextIndex === state.playQueue.currentIndex) {
+        nextIndex = Math.floor(Math.random() * songs.length);
+      }
+      state.playQueue.currentIndex = nextIndex;
+    }
+  } else {
+    state.playQueue.currentIndex += 1;
+    if (state.playQueue.currentIndex >= songs.length) {
+      state.playQueue = null;
+      return;
+    }
+  }
+
+  playSong(songs[state.playQueue.currentIndex], { clearQueue: false });
 }
 
 function renderSong(song) {
@@ -809,13 +868,30 @@ function renderPlaylist(playlist) {
   const songs = playlist.songIds.map((id) => state.songs.find((song) => song.id === id)).filter(Boolean);
   card.innerHTML = `
     <summary>
-      <span></span>
+      <span class="playlist-name"></span>
       <span class="playlist-count"></span>
+      <span class="playlist-actions">
+        <button class="ghost-button compact" type="button" data-action="play-order">顺序</button>
+        <button class="ghost-button compact" type="button" data-action="play-shuffle">随机</button>
+      </span>
     </summary>
     <ul></ul>
   `;
-  card.querySelector("summary span:first-child").textContent = playlist.name;
+  card.querySelector(".playlist-name").textContent = playlist.name;
   card.querySelector(".playlist-count").textContent = `${songs.length} 首`;
+  card.querySelectorAll(".playlist-actions button").forEach((button) => {
+    button.disabled = !songs.length;
+  });
+  card.querySelector('[data-action="play-order"]').addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    playPlaylist(playlist, "order");
+  });
+  card.querySelector('[data-action="play-shuffle"]').addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    playPlaylist(playlist, "shuffle");
+  });
   const list = card.querySelector("ul");
 
   if (!songs.length) {
@@ -1008,6 +1084,7 @@ function bindEvents() {
 
   els.audio.addEventListener("play", () => els.nowPlaying.classList.add("is-playing"));
   els.audio.addEventListener("pause", () => els.nowPlaying.classList.remove("is-playing"));
+  els.audio.addEventListener("ended", playNextInQueue);
 }
 
 async function boot() {
