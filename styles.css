@@ -641,6 +641,34 @@ audio {
   font-size: 0.86rem;
 }
 
+.icon-button {
+  width: 34px;
+  height: 34px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  padding: 0;
+  background: #fffdf8;
+  color: var(--rose-dark);
+  cursor: pointer;
+}
+
+.icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.icon-button svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.15;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .playlist-form {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
