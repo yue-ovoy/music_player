@@ -3,9 +3,10 @@ const defaultRoom = "林干嘛";
 const state = {
   songs: [],
   playlists: [],
+  profiles: [],
   currentSong: null,
   room: defaultRoom,
-  uploader: localStorage.getItem("uploaderName") || "",
+  currentProfileId: localStorage.getItem("currentProfileId") || "shuishui",
   artist: localStorage.getItem("artistName") || "",
   supabaseUrl: "",
   supabaseAnonKey: "",
@@ -14,11 +15,19 @@ const state = {
 
 const els = {
   forceUpdateButton: document.querySelector("#force-update-button"),
+  profileButton: document.querySelector("#profile-button"),
+  profileAvatar: document.querySelector("#profile-avatar"),
+  profileName: document.querySelector("#profile-name"),
+  profilePanel: document.querySelector("#profile-panel"),
+  closeProfileButton: document.querySelector("#close-profile-button"),
+  profileOptions: document.querySelectorAll(".profile-option"),
+  profileDisplayName: document.querySelector("#profile-display-name"),
+  profileAvatarFile: document.querySelector("#profile-avatar-file"),
+  saveProfileButton: document.querySelector("#save-profile-button"),
   workspace: document.querySelector(".workspace"),
   uploadPage: document.querySelector("#upload-page"),
   openUploadButton: document.querySelector("#open-upload-button"),
   backToLibraryButton: document.querySelector("#back-to-library-button"),
-  uploaderName: document.querySelector("#uploader-name"),
   artistName: document.querySelector("#artist-name"),
   uploadForm: document.querySelector("#upload-form"),
   musicFile: document.querySelector("#music-file"),
@@ -78,14 +87,117 @@ function getConfig() {
   return window.LITTLE_PLAYER_CONFIG || {};
 }
 
-function setUploader(value) {
-  state.uploader = value.trim();
-  localStorage.setItem("uploaderName", state.uploader);
-}
-
 function setArtist(value) {
   state.artist = value.trim();
   localStorage.setItem("artistName", state.artist);
+}
+
+function fallbackProfiles() {
+  return [
+    { id: "shuishui", displayName: "水水", avatarUrl: "" },
+    { id: "zhi", displayName: "知", avatarUrl: "" },
+  ];
+}
+
+function currentProfile() {
+  return state.profiles.find((profile) => profile.id === state.currentProfileId) || state.profiles[0] || fallbackProfiles()[0];
+}
+
+function profileInitial(name) {
+  return (name || "?").slice(0, 1);
+}
+
+function avatarDataUrl(name) {
+  const initial = profileInitial(name);
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+      <rect width="120" height="120" rx="60" fill="#c95169"/>
+      <text x="60" y="74" text-anchor="middle" font-size="52" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-weight="700" fill="#fffaf2">${initial}</text>
+    </svg>
+  `)}`;
+}
+
+function renderProfile() {
+  const profile = currentProfile();
+  els.profileName.textContent = profile.displayName;
+  els.profileAvatar.src = profile.avatarUrl || avatarDataUrl(profile.displayName);
+  els.profileDisplayName.value = profile.displayName;
+  els.profileOptions.forEach((button) => {
+    button.classList.toggle("active", button.dataset.profileId === state.currentProfileId);
+  });
+}
+
+async function loadProfiles() {
+  if (!state.cloud) {
+    state.profiles = fallbackProfiles();
+    renderProfile();
+    return;
+  }
+
+  let rows = [];
+  try {
+    rows = await supabaseRest("profiles?select=*&order=id.asc");
+  } catch (error) {
+    console.warn("Profiles are not ready yet", error);
+    state.profiles = fallbackProfiles();
+    renderProfile();
+    return;
+  }
+  state.profiles = rows.map((profile) => ({
+    id: profile.id,
+    displayName: profile.display_name,
+    avatarUrl: profile.avatar_url || "",
+  }));
+  if (!state.profiles.some((profile) => profile.id === state.currentProfileId)) {
+    state.currentProfileId = state.profiles[0]?.id || "shuishui";
+    localStorage.setItem("currentProfileId", state.currentProfileId);
+  }
+  renderProfile();
+}
+
+function selectProfile(id) {
+  state.currentProfileId = id;
+  localStorage.setItem("currentProfileId", id);
+  renderProfile();
+}
+
+async function uploadAvatar(file, profileId) {
+  const path = `${profileId}-${Date.now()}.${fileExtension(file.name)}`;
+  await uploadToSupabaseStorage("avatars", path, file, () => {}, true);
+  return `${state.supabaseUrl}/storage/v1/object/public/avatars/${encodeStoragePath(path)}`;
+}
+
+async function saveProfile() {
+  const displayName = els.profileDisplayName.value.trim() || profileInitial(currentProfile().displayName);
+  let avatarUrl = currentProfile().avatarUrl || "";
+
+  els.saveProfileButton.disabled = true;
+  els.saveProfileButton.textContent = "保存中...";
+
+  try {
+    const file = els.profileAvatarFile.files[0];
+    if (file && state.cloud) {
+      avatarUrl = await uploadAvatar(file, state.currentProfileId);
+    }
+
+    if (state.cloud) {
+      await supabaseRest("profiles?on_conflict=id", {
+        method: "POST",
+        headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+        body: JSON.stringify({ id: state.currentProfileId, display_name: displayName, avatar_url: avatarUrl }),
+      });
+      await loadProfiles();
+    } else {
+      state.profiles = state.profiles.map((profile) =>
+        profile.id === state.currentProfileId ? { ...profile, displayName, avatarUrl } : profile,
+      );
+      renderProfile();
+    }
+    els.profileAvatarFile.value = "";
+  } finally {
+    els.saveProfileButton.disabled = false;
+    els.saveProfileButton.textContent = "保存资料";
+  }
 }
 
 function showUploadPage() {
@@ -244,15 +356,15 @@ function encodeStoragePath(path) {
   return path.split("/").map((part) => encodeURIComponent(part)).join("/");
 }
 
-function uploadToSupabaseStorage(path, file, onProgress) {
+function uploadToSupabaseStorage(bucket, path, file, onProgress, upsert = false) {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    const url = `${state.supabaseUrl}/storage/v1/object/songs/${encodeStoragePath(path)}`;
+    const url = `${state.supabaseUrl}/storage/v1/object/${bucket}/${encodeStoragePath(path)}`;
 
     xhr.open("POST", url);
     xhr.setRequestHeader("apikey", state.supabaseAnonKey);
     xhr.setRequestHeader("Authorization", `Bearer ${state.supabaseAnonKey}`);
-    xhr.setRequestHeader("x-upsert", "false");
+    xhr.setRequestHeader("x-upsert", upsert ? "true" : "false");
     xhr.setRequestHeader("Content-Type", file.type || "audio/wav");
 
     xhr.upload.addEventListener("progress", (event) => {
@@ -306,13 +418,13 @@ async function uploadSong(file, onProgress = () => {}) {
     room: state.room,
     title: file.name.replace(/\.[^.]+$/, ""),
     artist: state.artist || "未知歌手",
-    uploader: state.uploader || "匿名",
+    uploader: currentProfile().displayName || "匿名",
     createdAt: new Date().toISOString(),
   };
 
   if (state.cloud) {
     const path = `${storageSafeSegment(state.room)}/${song.id}.${fileExtension(file.name)}`;
-    await uploadToSupabaseStorage(path, file, onProgress);
+    await uploadToSupabaseStorage("songs", path, file, onProgress);
     const publicUrl = `${state.supabaseUrl}/storage/v1/object/public/songs/${encodeStoragePath(path)}`;
     await supabaseRest("songs", {
       method: "POST",
@@ -580,13 +692,21 @@ function renderSelectedFiles(files, statuses = {}) {
 }
 
 function bindEvents() {
-  els.uploaderName.value = state.uploader;
   els.artistName.value = state.artist;
 
   els.forceUpdateButton.addEventListener("click", forceAppUpdate);
+  els.profileButton.addEventListener("click", () => {
+    els.profilePanel.hidden = !els.profilePanel.hidden;
+  });
+  els.closeProfileButton.addEventListener("click", () => {
+    els.profilePanel.hidden = true;
+  });
+  els.profileOptions.forEach((button) => {
+    button.addEventListener("click", () => selectProfile(button.dataset.profileId));
+  });
+  els.saveProfileButton.addEventListener("click", saveProfile);
   els.openUploadButton.addEventListener("click", showUploadPage);
   els.backToLibraryButton.addEventListener("click", showLibraryPage);
-  els.uploaderName.addEventListener("change", (event) => setUploader(event.target.value));
   els.artistName.addEventListener("change", (event) => setArtist(event.target.value));
   els.clearRoomButton.addEventListener("click", clearRoom);
   els.musicFile.addEventListener("change", () => renderSelectedFiles([...els.musicFile.files]));
@@ -658,6 +778,7 @@ async function boot() {
 
   bindEvents();
   await initSupabase();
+  await loadProfiles();
   await loadData();
 }
 
