@@ -498,11 +498,18 @@ function renderSong(song) {
 }
 
 function renderPlaylist(playlist) {
-  const card = document.createElement("article");
+  const card = document.createElement("details");
   card.className = "playlist-card";
   const songs = playlist.songIds.map((id) => state.songs.find((song) => song.id === id)).filter(Boolean);
-  card.innerHTML = `<h4></h4><ul></ul>`;
-  card.querySelector("h4").textContent = `${playlist.name} · ${songs.length} 首`;
+  card.innerHTML = `
+    <summary>
+      <span></span>
+      <span class="playlist-count"></span>
+    </summary>
+    <ul></ul>
+  `;
+  card.querySelector("summary span:first-child").textContent = playlist.name;
+  card.querySelector(".playlist-count").textContent = `${songs.length} 首`;
   const list = card.querySelector("ul");
 
   if (!songs.length) {

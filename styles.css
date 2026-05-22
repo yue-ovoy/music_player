@@ -479,9 +479,40 @@ audio {
   padding: 14px;
 }
 
-.playlist-card h4 {
-  margin: 0 0 10px;
-  font-size: 1rem;
+.playlist-card summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  font-weight: 800;
+  list-style: none;
+}
+
+.playlist-card summary::-webkit-details-marker {
+  display: none;
+}
+
+.playlist-card summary::after {
+  content: "展开";
+  flex: 0 0 auto;
+  color: var(--mint);
+  font-size: 0.86rem;
+}
+
+.playlist-card[open] summary {
+  margin-bottom: 10px;
+}
+
+.playlist-card[open] summary::after {
+  content: "收起";
+}
+
+.playlist-count {
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 800;
+  margin-left: auto;
 }
 
 .playlist-card ul {
