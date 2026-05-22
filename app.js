@@ -7,6 +7,7 @@ const state = {
   profiles: [],
   currentSong: null,
   playQueue: null,
+  playMode: localStorage.getItem("playMode") || "order",
   room: defaultRoom,
   currentProfileId: savedProfileId || "shuishui",
   artist: localStorage.getItem("artistName") || "",
@@ -787,7 +788,8 @@ function playbackMeta(song) {
   };
   const mode = modeNames[state.playQueue.mode] || "顺序播放";
   const index = state.playQueue.songIds.indexOf(song.id);
-  const position = index >= 0 ? ` · ${index + 1}/${state.playQueue.songIds.length}` : "";
+  if (index < 0) return `${base} · 下一首：${state.playQueue.name} · ${mode}`;
+  const position = ` · ${index + 1}/${state.playQueue.songIds.length}`;
   return `${base} · ${state.playQueue.name}${position} · ${mode}`;
 }
 
@@ -809,6 +811,7 @@ function updatePlayerControls() {
   els.playToggleButton.classList.toggle("is-playing", hasSong && !els.audio.paused);
   els.playToggleButton.title = hasSong && !els.audio.paused ? "暂停" : "播放";
   els.playToggleButton.setAttribute("aria-label", hasSong && !els.audio.paused ? "暂停" : "播放");
+  updatePlaybackButtonStates();
 }
 
 function updateProgress() {
@@ -841,17 +844,26 @@ function playSong(song, options = {}) {
   updatePlayerControls();
 }
 
-function playSongCollection(name, songs, mode) {
-  if (!songs.length) return;
-  const firstIndex = mode === "shuffle" ? Math.floor(Math.random() * songs.length) : 0;
+function setPlaybackMode(name, songs, mode) {
+  state.playMode = mode;
+  localStorage.setItem("playMode", mode);
+
   state.playQueue = {
     id: name,
     name,
     mode,
     songIds: songs.map((song) => song.id),
-    currentIndex: firstIndex,
+    currentIndex: state.currentSong ? songs.findIndex((song) => song.id === state.currentSong.id) : -1,
   };
-  playSong(songs[firstIndex], { clearQueue: false });
+
+  if (!songs.length) {
+    state.playQueue = null;
+  }
+
+  if (state.currentSong) {
+    els.currentMeta.textContent = playbackMeta(state.currentSong);
+  }
+  updatePlayerControls();
 }
 
 function playNextInQueue() {
@@ -923,13 +935,13 @@ function togglePlayback() {
 
 function playbackButtonsHtml() {
   return `
-    <button class="icon-button" type="button" data-action="play-order" title="顺序播放" aria-label="顺序播放">
+    <button class="icon-button" type="button" data-mode="order" title="顺序播放" aria-label="顺序播放">
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path d="M4 7h10M4 12h10M4 17h8"></path>
         <path d="m17 8 3 4-3 4"></path>
       </svg>
     </button>
-    <button class="icon-button" type="button" data-action="play-shuffle" title="随机播放" aria-label="随机播放">
+    <button class="icon-button" type="button" data-mode="shuffle" title="随机播放" aria-label="随机播放">
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path d="M4 7h3c4 0 5 10 9 10h4"></path>
         <path d="M4 17h3c1.8 0 3-1.8 4.2-3.8"></path>
@@ -937,7 +949,7 @@ function playbackButtonsHtml() {
         <path d="m17 14 3 3-3 3"></path>
       </svg>
     </button>
-    <button class="icon-button" type="button" data-action="play-repeat-one" title="单曲循环" aria-label="单曲循环">
+    <button class="icon-button" type="button" data-mode="repeatOne" title="单曲循环" aria-label="单曲循环">
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path d="M17 2l4 4-4 4"></path>
         <path d="M3 11V9a3 3 0 0 1 3-3h15"></path>
@@ -949,14 +961,20 @@ function playbackButtonsHtml() {
   `;
 }
 
+function updatePlaybackButtonStates() {
+  document.querySelectorAll(".icon-button[data-mode]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.mode === state.playMode);
+  });
+}
+
 function bindPlaybackButtons(container, getSongs, name, stopSummary = false) {
   container.querySelectorAll(".icon-button").forEach((button) => {
     button.disabled = !getSongs().length;
+    button.classList.toggle("active", button.dataset.mode === state.playMode);
     button.addEventListener("click", (event) => {
       event.preventDefault();
       if (stopSummary) event.stopPropagation();
-      const mode = event.currentTarget.dataset.action.replace("play-", "").replace("repeat-one", "repeatOne");
-      playSongCollection(name, getSongs(), mode);
+      setPlaybackMode(name, getSongs(), event.currentTarget.dataset.mode);
     });
   });
 }
