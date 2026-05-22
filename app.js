@@ -12,7 +12,6 @@ const state = {
 };
 
 const els = {
-  syncStatus: document.querySelector("#sync-status"),
   forceUpdateButton: document.querySelector("#force-update-button"),
   uploaderName: document.querySelector("#uploader-name"),
   uploadForm: document.querySelector("#upload-form"),
@@ -155,7 +154,6 @@ async function initSupabase() {
   state.supabaseUrl = config.supabaseUrl.replace(/\/$/, "");
   state.supabaseAnonKey = config.supabaseAnonKey;
   state.cloud = true;
-  els.syncStatus.textContent = "云端共享";
   els.modeNote.textContent = "已连接 Supabase。你们打开同一个链接时，上传的歌和歌单会同步共享。";
 }
 
