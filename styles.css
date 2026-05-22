@@ -78,6 +78,17 @@ input {
   display: none;
 }
 
+.profile-hint {
+  margin: 0 0 12px;
+  color: var(--rose-dark);
+  font-weight: 800;
+  line-height: 1.5;
+}
+
+.profile-hint[hidden] {
+  display: none;
+}
+
 .profile-switch {
   display: grid;
   grid-template-columns: repeat(2, 1fr);

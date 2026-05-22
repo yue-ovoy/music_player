@@ -1,12 +1,13 @@
 const dbName = "our-little-player";
 const defaultRoom = "林干嘛";
+const savedProfileId = localStorage.getItem("currentProfileId");
 const state = {
   songs: [],
   playlists: [],
   profiles: [],
   currentSong: null,
   room: defaultRoom,
-  currentProfileId: localStorage.getItem("currentProfileId") || "shuishui",
+  currentProfileId: savedProfileId || "shuishui",
   artist: localStorage.getItem("artistName") || "",
   supabaseUrl: "",
   supabaseAnonKey: "",
@@ -25,6 +26,7 @@ const els = {
   profileAvatar: document.querySelector("#profile-avatar"),
   profileName: document.querySelector("#profile-name"),
   profilePanel: document.querySelector("#profile-panel"),
+  profileHint: document.querySelector("#profile-hint"),
   closeProfileButton: document.querySelector("#close-profile-button"),
   profileOptions: document.querySelectorAll(".profile-option"),
   profileDisplayName: document.querySelector("#profile-display-name"),
@@ -147,9 +149,16 @@ function renderProfile() {
   els.profileName.textContent = profile.displayName;
   els.profileAvatar.src = profile.avatarUrl || avatarDataUrl(profile.displayName);
   els.profileDisplayName.value = profile.displayName;
+  els.profileHint.hidden = Boolean(localStorage.getItem("currentProfileId"));
   els.profileOptions.forEach((button) => {
     button.classList.toggle("active", button.dataset.profileId === state.currentProfileId);
   });
+}
+
+function askForProfileIfNeeded() {
+  if (savedProfileId) return;
+  els.profilePanel.hidden = false;
+  els.profileHint.hidden = false;
 }
 
 async function loadProfiles() {
@@ -183,6 +192,7 @@ async function loadProfiles() {
 function selectProfile(id) {
   state.currentProfileId = id;
   localStorage.setItem("currentProfileId", id);
+  els.profileHint.hidden = true;
   resetAvatarCrop();
   renderProfile();
 }
@@ -1010,6 +1020,7 @@ async function boot() {
   bindEvents();
   await initSupabase();
   await loadProfiles();
+  askForProfileIfNeeded();
   await loadData();
 }
 
