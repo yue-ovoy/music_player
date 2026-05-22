@@ -13,6 +13,7 @@ const state = {
 
 const els = {
   syncStatus: document.querySelector("#sync-status"),
+  forceUpdateButton: document.querySelector("#force-update-button"),
   uploaderName: document.querySelector("#uploader-name"),
   uploadForm: document.querySelector("#upload-form"),
   musicFile: document.querySelector("#music-file"),
@@ -75,6 +76,25 @@ function getConfig() {
 function setUploader(value) {
   state.uploader = value.trim();
   localStorage.setItem("uploaderName", state.uploader);
+}
+
+async function forceAppUpdate() {
+  els.forceUpdateButton.disabled = true;
+  els.forceUpdateButton.textContent = "更新中";
+
+  if ("serviceWorker" in navigator) {
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(registrations.map((registration) => registration.update()));
+  }
+
+  if ("caches" in window) {
+    const names = await caches.keys();
+    await Promise.all(names.map((name) => caches.delete(name)));
+  }
+
+  const url = new URL(window.location.href);
+  url.searchParams.set("updated", Date.now().toString());
+  window.location.replace(url.toString());
 }
 
 function openLocalDb() {
@@ -529,6 +549,7 @@ function renderSelectedFiles(files, statuses = {}) {
 function bindEvents() {
   els.uploaderName.value = state.uploader;
 
+  els.forceUpdateButton.addEventListener("click", forceAppUpdate);
   els.uploaderName.addEventListener("change", (event) => setUploader(event.target.value));
   els.clearRoomButton.addEventListener("click", clearRoom);
   els.musicFile.addEventListener("change", () => renderSelectedFiles([...els.musicFile.files]));

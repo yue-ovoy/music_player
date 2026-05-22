@@ -90,6 +90,24 @@ h1 {
   font-weight: 800;
 }
 
+.intro-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.update-button {
+  min-height: 38px;
+  border: 1px solid rgba(48, 124, 114, 0.24);
+  border-radius: 999px;
+  padding: 0 14px;
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--mint);
+  font-weight: 800;
+  cursor: pointer;
+}
+
 .workspace {
   display: grid;
   grid-template-columns: 320px minmax(0, 1fr);
