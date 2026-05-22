@@ -88,6 +88,7 @@ h1 {
   background: rgba(255, 255, 255, 0.78);
   color: var(--rose-dark);
   font-weight: 800;
+  white-space: nowrap;
 }
 
 .intro-actions {
@@ -503,8 +504,16 @@ audio {
 
   .intro {
     min-height: 26vh;
-    display: grid;
-    align-items: end;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-end;
+  }
+
+  .intro-actions {
+    width: auto;
+    align-self: flex-start;
+    justify-content: flex-start;
   }
 
   .workspace,
