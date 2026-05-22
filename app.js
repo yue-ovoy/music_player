@@ -605,6 +605,12 @@ function bindEvents() {
 }
 
 async function boot() {
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("./service-worker.js").catch((error) => {
+      console.warn("Service worker registration failed", error);
+    });
+  }
+
   bindEvents();
   await initSupabase();
   await loadData();
