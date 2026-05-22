@@ -10,9 +10,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.jpg" />
-    <link rel="stylesheet" href="./styles.css?v=20260522-library-controls" />
+    <link rel="stylesheet" href="./styles.css?v=20260522-library-layout" />
     <script src="./config.js"></script>
-    <script type="module" src="./app.js?v=20260522-library-controls"></script>
+    <script type="module" src="./app.js?v=20260522-library-layout"></script>
   </head>
   <body>
     <main class="shell">
@@ -119,10 +119,12 @@
           </div>
 
           <section class="view active" id="library-view" aria-label="曲库">
-            <div class="section-bar">
-              <h3>共享曲库</h3>
-              <div class="library-actions">
+            <div class="section-bar library-bar">
+              <div class="library-heading">
+                <h3>共享曲库</h3>
                 <span id="song-count">0 首</span>
+              </div>
+              <div class="library-actions">
                 <div class="playback-actions" id="library-playback-actions" aria-label="曲库播放控制"></div>
                 <button class="secondary-button compact" id="open-upload-button" type="button">上传歌曲</button>
               </div>
