@@ -112,7 +112,6 @@ h1 {
   top: 18px;
 }
 
-.panel-heading,
 .section-bar {
   display: flex;
   align-items: center;
@@ -120,16 +119,6 @@ h1 {
   gap: 16px;
   margin-bottom: 14px;
   font-weight: 800;
-}
-
-.icon-button {
-  width: 36px;
-  height: 36px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: #fffdf8;
-  color: var(--ink);
-  cursor: pointer;
 }
 
 .field {

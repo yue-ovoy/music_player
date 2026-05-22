@@ -20,7 +20,6 @@ const els = {
   uploadButton: document.querySelector("#upload-form button"),
   clearRoomButton: document.querySelector("#clear-room-button"),
   modeNote: document.querySelector("#mode-note"),
-  refreshButton: document.querySelector("#refresh-button"),
   audio: document.querySelector("#audio-player"),
   currentTitle: document.querySelector("#current-title"),
   currentMeta: document.querySelector("#current-meta"),
@@ -531,7 +530,6 @@ function bindEvents() {
   els.uploaderName.value = state.uploader;
 
   els.uploaderName.addEventListener("change", (event) => setUploader(event.target.value));
-  els.refreshButton.addEventListener("click", loadData);
   els.clearRoomButton.addEventListener("click", clearRoom);
   els.musicFile.addEventListener("change", () => renderSelectedFiles([...els.musicFile.files]));
 
