@@ -1,10 +1,10 @@
 const dbName = "our-little-player";
-const defaultRoom = "our-room";
+const defaultRoom = "林干嘛";
 const state = {
   songs: [],
   playlists: [],
   currentSong: null,
-  room: localStorage.getItem("roomCode") || defaultRoom,
+  room: defaultRoom,
   uploader: localStorage.getItem("uploaderName") || "",
   supabaseUrl: "",
   supabaseAnonKey: "",
@@ -13,7 +13,6 @@ const state = {
 
 const els = {
   syncStatus: document.querySelector("#sync-status"),
-  roomCode: document.querySelector("#room-code"),
   uploaderName: document.querySelector("#uploader-name"),
   uploadForm: document.querySelector("#upload-form"),
   musicFile: document.querySelector("#music-file"),
@@ -72,11 +71,6 @@ function storageSafeSegment(value) {
 
 function getConfig() {
   return window.LITTLE_PLAYER_CONFIG || {};
-}
-
-function setRoom(value) {
-  state.room = value.trim() || defaultRoom;
-  localStorage.setItem("roomCode", state.room);
 }
 
 function setUploader(value) {
@@ -143,7 +137,7 @@ async function initSupabase() {
   state.supabaseAnonKey = config.supabaseAnonKey;
   state.cloud = true;
   els.syncStatus.textContent = "云端共享";
-  els.modeNote.textContent = "已连接 Supabase。你们使用同一个房间码时，上传的歌和歌单会同步共享。";
+  els.modeNote.textContent = "已连接 Supabase。你们打开同一个链接时，上传的歌和歌单会同步共享。";
 }
 
 async function supabaseRest(path, options = {}) {
@@ -382,7 +376,7 @@ async function deleteSong(song) {
 }
 
 async function clearRoom() {
-  if (!confirm(`确定清空「${state.room}」这个房间吗？房间里的歌曲和歌单都会删除。`)) return;
+  if (!confirm("确定清空所有内容吗？歌曲和歌单都会删除。")) return;
   if (!confirm("这个操作不能撤销。真的要继续吗？")) return;
 
   if (state.cloud) {
@@ -534,13 +528,7 @@ function renderSelectedFiles(files, statuses = {}) {
 }
 
 function bindEvents() {
-  els.roomCode.value = state.room;
   els.uploaderName.value = state.uploader;
-
-  els.roomCode.addEventListener("change", async (event) => {
-    setRoom(event.target.value);
-    await loadData();
-  });
 
   els.uploaderName.addEventListener("change", (event) => setUploader(event.target.value));
   els.refreshButton.addEventListener("click", loadData);
