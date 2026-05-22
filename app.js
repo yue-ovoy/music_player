@@ -774,6 +774,7 @@ function resetPlayer() {
   state.playQueue = null;
   els.currentTitle.textContent = "还没有播放歌曲";
   els.currentMeta.textContent = "上传一首歌，或者从曲库点播放。";
+  updatePlayingRows();
   updateProgress();
   updatePlayerControls();
 }
@@ -841,10 +842,11 @@ function playSong(song, options = {}) {
   els.audio.play();
   els.currentTitle.textContent = song.title;
   els.currentMeta.textContent = playbackMeta(song);
+  updatePlayingRows();
   updatePlayerControls();
 }
 
-function playSongInCollection(song, name, songs) {
+function setQueueContextForSong(song, name, songs) {
   const index = songs.findIndex((item) => item.id === song.id);
   state.playQueue = {
     id: name,
@@ -853,6 +855,14 @@ function playSongInCollection(song, name, songs) {
     songIds: songs.map((item) => item.id),
     currentIndex: Math.max(0, index),
   };
+  if (state.currentSong?.id === song.id) {
+    els.currentMeta.textContent = playbackMeta(song);
+  }
+  updatePlayerControls();
+}
+
+function playSongInCollection(song, name, songs) {
+  setQueueContextForSong(song, name, songs);
   playSong(song, { clearQueue: false });
 }
 
@@ -941,6 +951,37 @@ function togglePlayback() {
   }
 }
 
+function closeSongMenus(exceptMenu = null) {
+  document.querySelectorAll(".song-menu").forEach((menu) => {
+    if (menu !== exceptMenu) menu.hidden = true;
+  });
+}
+
+function updatePlayingRows() {
+  document.querySelectorAll(".song-row[data-song-id]").forEach((row) => {
+    updateSongRow(row);
+  });
+}
+
+function handleSongCardClick(song, name, songs) {
+  const isCurrent = state.currentSong?.id === song.id;
+  if (isCurrent) {
+    setQueueContextForSong(song, name, songs);
+    togglePlayback();
+    return;
+  }
+  playSongInCollection(song, name, songs);
+}
+
+function updateSongRow(row) {
+  const isCurrent = state.currentSong?.id === row.dataset.songId;
+  const status = row.querySelector(".song-status");
+  row.classList.toggle("is-current", isCurrent);
+  if (status) {
+    status.textContent = isCurrent ? (els.audio.paused ? "已暂停" : "正在播放") : "";
+  }
+}
+
 function playbackButtonsHtml() {
   return `
     <button class="icon-button" type="button" data-mode="order" title="顺序播放" aria-label="顺序播放">
@@ -987,40 +1028,69 @@ function bindPlaybackButtons(container, getSongs, name, stopSummary = false) {
   });
 }
 
-function renderSong(song) {
+function renderSongMenu(row, song) {
+  const menu = row.querySelector(".song-menu");
+  const playlistList = menu.querySelector(".song-menu-playlists");
+  playlistList.innerHTML = "";
+
+  if (!state.playlists.length) {
+    const empty = document.createElement("div");
+    empty.className = "song-menu-empty";
+    empty.textContent = "还没有歌单";
+    playlistList.append(empty);
+  } else {
+    state.playlists.forEach((playlist) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = playlist.name;
+      button.addEventListener("click", async (event) => {
+        event.stopPropagation();
+        await addToPlaylist(song.id, playlist.id);
+        closeSongMenus();
+      });
+      playlistList.append(button);
+    });
+  }
+
+  menu.querySelector('[data-action="delete"]').addEventListener("click", (event) => {
+    event.stopPropagation();
+    closeSongMenus();
+    deleteSong(song);
+  });
+}
+
+function renderSong(song, context = {}) {
+  const collectionName = context.collectionName || "共享曲库";
+  const getSongs = context.getSongs || (() => state.songs);
   const row = document.createElement("article");
   row.className = "song-row";
+  row.dataset.songId = song.id;
   row.innerHTML = `
     <div>
-      <div class="song-title"></div>
+      <div class="song-title"><span class="song-status"></span><span class="song-title-text"></span></div>
       <div class="song-meta"></div>
     </div>
-    <div class="row-actions">
-      <button class="ghost-button" type="button" data-action="play">播放</button>
-      <select class="ghost-button" data-action="playlist">
-        <option value="">加入歌单</option>
-      </select>
-      <button class="ghost-button danger" type="button" data-action="delete">删除</button>
+    <button class="song-menu-button" type="button" data-action="menu" title="更多" aria-label="更多操作">...</button>
+    <div class="song-menu" hidden>
+      <div class="song-menu-label">加入歌单</div>
+      <div class="song-menu-playlists"></div>
+      <button class="danger" type="button" data-action="delete">删除</button>
     </div>
   `;
-  row.querySelector(".song-title").textContent = song.title;
+  row.querySelector(".song-title-text").textContent = song.title;
   row.querySelector(".song-meta").textContent = `${song.artist || "未知歌手"} · ${song.uploader} · ${fmtDate(song.createdAt)}`;
 
-  const select = row.querySelector("select");
-  state.playlists.forEach((playlist) => {
-    const option = document.createElement("option");
-    option.value = playlist.id;
-    option.textContent = playlist.name;
-    select.append(option);
+  row.addEventListener("click", () => handleSongCardClick(song, collectionName, getSongs()));
+  row.querySelector('[data-action="menu"]').addEventListener("click", (event) => {
+    event.stopPropagation();
+    const menu = row.querySelector(".song-menu");
+    const shouldOpen = menu.hidden;
+    closeSongMenus(menu);
+    menu.hidden = !shouldOpen;
   });
-
-  row.querySelector('[data-action="play"]').addEventListener("click", () => playSongInCollection(song, "共享曲库", state.songs));
-  row.querySelector('[data-action="delete"]').addEventListener("click", () => deleteSong(song));
-  select.addEventListener("change", async (event) => {
-    if (!event.target.value) return;
-    await addToPlaylist(song.id, event.target.value);
-    event.target.value = "";
-  });
+  row.querySelector(".song-menu").addEventListener("click", (event) => event.stopPropagation());
+  renderSongMenu(row, song);
+  updateSongRow(row);
 
   return row;
 }
@@ -1053,18 +1123,10 @@ function renderPlaylist(playlist) {
   }
 
   songs.forEach((song) => {
-    const item = document.createElement("li");
-    item.className = "song-row";
-    item.innerHTML = `
-      <div>
-        <div class="song-title"></div>
-        <div class="song-meta"></div>
-      </div>
-      <button class="ghost-button" type="button">播放</button>
-    `;
-    item.querySelector(".song-title").textContent = song.title;
-    item.querySelector(".song-meta").textContent = `${song.artist || "未知歌手"} · ${song.uploader}`;
-    item.querySelector("button").addEventListener("click", () => playSongInCollection(song, playlist.name, songs));
+    const item = renderSong(song, {
+      collectionName: playlist.name,
+      getSongs: () => songs,
+    });
     list.append(item);
   });
 
@@ -1235,8 +1297,10 @@ function bindEvents() {
   });
 
   els.audio.addEventListener("play", () => els.nowPlaying.classList.add("is-playing"));
+  els.audio.addEventListener("play", updatePlayingRows);
   els.audio.addEventListener("play", updatePlayerControls);
   els.audio.addEventListener("pause", () => els.nowPlaying.classList.remove("is-playing"));
+  els.audio.addEventListener("pause", updatePlayingRows);
   els.audio.addEventListener("pause", updatePlayerControls);
   els.audio.addEventListener("ended", playNextInQueue);
   els.audio.addEventListener("loadedmetadata", updateProgress);
@@ -1246,6 +1310,7 @@ function bindEvents() {
   els.previousButton.addEventListener("click", playPreviousInQueue);
   els.playToggleButton.addEventListener("click", togglePlayback);
   els.nextButton.addEventListener("click", playNextInQueue);
+  document.addEventListener("click", () => closeSongMenus());
   updatePlayerControls();
 }
 

@@ -678,18 +678,38 @@ audio {
 }
 
 .song-row {
+  position: relative;
   min-height: 72px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
   padding: 12px;
+  cursor: pointer;
+}
+
+.song-row.is-current {
+  border-color: rgba(201, 81, 105, 0.36);
+  background: rgba(201, 81, 105, 0.09);
 }
 
 .song-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin-bottom: 5px;
   overflow-wrap: anywhere;
   font-weight: 800;
+}
+
+.song-title-text {
+  min-width: 0;
+}
+
+.song-status {
+  flex: 0 0 auto;
+  color: var(--rose-dark);
+  font-size: 0.76rem;
 }
 
 .song-meta {
@@ -697,11 +717,68 @@ audio {
   font-size: 0.85rem;
 }
 
-.row-actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: end;
+.song-menu-button {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: #fffdf8;
+  color: var(--muted);
+  font-size: 1.3rem;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.song-menu {
+  position: absolute;
+  top: 50px;
+  right: 10px;
+  z-index: 5;
+  width: min(220px, calc(100vw - 64px));
+  display: grid;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  background: #fffdf8;
+  box-shadow: 0 16px 34px rgba(64, 42, 34, 0.16);
+}
+
+.song-menu[hidden] {
+  display: none;
+}
+
+.song-menu-label,
+.song-menu-empty {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.song-menu-playlists {
+  display: grid;
+  gap: 4px;
+}
+
+.song-menu button {
+  min-height: 34px;
+  border: 0;
+  border-radius: 6px;
+  padding: 0 10px;
+  background: transparent;
+  color: var(--ink);
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+}
+
+.song-menu button:hover {
+  background: rgba(201, 81, 105, 0.1);
+}
+
+.song-menu button.danger {
+  color: var(--rose-dark);
 }
 
 .ghost-button {
@@ -874,11 +951,7 @@ audio {
   }
 
   .song-row {
-    grid-template-columns: 1fr;
-  }
-
-  .row-actions {
-    justify-content: start;
+    grid-template-columns: minmax(0, 1fr) auto;
   }
 
   .playlist-card summary {
