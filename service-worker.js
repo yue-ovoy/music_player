@@ -1,4 +1,4 @@
-const CACHE_NAME = "fanka-music-v15";
+const CACHE_NAME = "fanka-music-v16";
 const APP_SHELL = [
   "./",
   "./index.html",

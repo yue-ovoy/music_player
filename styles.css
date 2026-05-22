@@ -538,6 +538,65 @@ h1 {
   color: rgba(255, 250, 242, 0.74);
 }
 
+.player-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin: 2px 0 14px;
+}
+
+.player-button {
+  width: 44px;
+  height: 44px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid rgba(157, 49, 72, 0.18);
+  border-radius: 50%;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--rose-dark);
+  box-shadow: 0 10px 24px rgba(64, 42, 34, 0.08);
+  cursor: pointer;
+}
+
+.player-button.primary {
+  width: 58px;
+  height: 58px;
+  background: var(--rose);
+  color: #fffaf2;
+  box-shadow: 0 14px 28px rgba(201, 81, 105, 0.26);
+}
+
+.player-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.player-button svg {
+  width: 21px;
+  height: 21px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.player-button.primary svg {
+  width: 25px;
+  height: 25px;
+}
+
+.player-button .pause-icon,
+.player-button.is-playing .play-icon {
+  display: none;
+}
+
+.player-button.is-playing .pause-icon {
+  display: block;
+}
+
 audio {
   width: 100%;
   margin-bottom: 14px;

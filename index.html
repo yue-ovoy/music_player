@@ -10,9 +10,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.jpg" />
-    <link rel="stylesheet" href="./styles.css?v=20260522-playback-icons" />
+    <link rel="stylesheet" href="./styles.css?v=20260522-player-controls" />
     <script src="./config.js"></script>
-    <script type="module" src="./app.js?v=20260522-playback-icons"></script>
+    <script type="module" src="./app.js?v=20260522-player-controls"></script>
   </head>
   <body>
     <main class="shell">
@@ -79,6 +79,30 @@
               <h2 id="current-title">还没有播放歌曲</h2>
               <p id="current-meta">上传一首歌，或者从曲库点播放。</p>
             </div>
+          </div>
+
+          <div class="player-controls" aria-label="播放器控制">
+            <button class="player-button" id="previous-button" type="button" title="上一首" aria-label="上一首" disabled>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M6 5v14"></path>
+                <path d="m19 6-11 6 11 6V6z"></path>
+              </svg>
+            </button>
+            <button class="player-button primary" id="play-toggle-button" type="button" title="播放" aria-label="播放" disabled>
+              <svg class="play-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M8 5v14l11-7-11-7z"></path>
+              </svg>
+              <svg class="pause-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M8 5v14"></path>
+                <path d="M16 5v14"></path>
+              </svg>
+            </button>
+            <button class="player-button" id="next-button" type="button" title="下一首" aria-label="下一首" disabled>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m5 6 11 6-11 6V6z"></path>
+                <path d="M18 5v14"></path>
+              </svg>
+            </button>
           </div>
 
           <audio id="audio-player" controls preload="metadata"></audio>

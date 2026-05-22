@@ -50,6 +50,9 @@ const els = {
   clearRoomButton: document.querySelector("#clear-room-button"),
   modeNote: document.querySelector("#mode-note"),
   audio: document.querySelector("#audio-player"),
+  previousButton: document.querySelector("#previous-button"),
+  playToggleButton: document.querySelector("#play-toggle-button"),
+  nextButton: document.querySelector("#next-button"),
   currentTitle: document.querySelector("#current-title"),
   currentMeta: document.querySelector("#current-meta"),
   nowPlaying: document.querySelector(".now-playing"),
@@ -757,6 +760,7 @@ function resetPlayer() {
   state.playQueue = null;
   els.currentTitle.textContent = "还没有播放歌曲";
   els.currentMeta.textContent = "上传一首歌，或者从曲库点播放。";
+  updatePlayerControls();
 }
 
 function playbackMeta(song) {
@@ -773,6 +777,26 @@ function playbackMeta(song) {
   return `${base} · ${state.playQueue.name}${position} · ${mode}`;
 }
 
+function queueSongs() {
+  if (!state.playQueue) return [];
+  return state.playQueue.songIds.map((id) => state.songs.find((song) => song.id === id)).filter(Boolean);
+}
+
+function canUseQueueControls() {
+  return Boolean(state.playQueue && queueSongs().length);
+}
+
+function updatePlayerControls() {
+  const hasSong = Boolean(state.currentSong);
+  const hasQueue = canUseQueueControls();
+  els.playToggleButton.disabled = !hasSong;
+  els.previousButton.disabled = !hasQueue;
+  els.nextButton.disabled = !hasQueue;
+  els.playToggleButton.classList.toggle("is-playing", hasSong && !els.audio.paused);
+  els.playToggleButton.title = hasSong && !els.audio.paused ? "暂停" : "播放";
+  els.playToggleButton.setAttribute("aria-label", hasSong && !els.audio.paused ? "暂停" : "播放");
+}
+
 function playSong(song, options = {}) {
   if (options.clearQueue !== false) {
     state.playQueue = null;
@@ -782,6 +806,7 @@ function playSong(song, options = {}) {
   els.audio.play();
   els.currentTitle.textContent = song.title;
   els.currentMeta.textContent = playbackMeta(song);
+  updatePlayerControls();
 }
 
 function playPlaylist(playlist, mode) {
@@ -829,6 +854,41 @@ function playNextInQueue() {
   }
 
   playSong(songs[state.playQueue.currentIndex], { clearQueue: false });
+}
+
+function playPreviousInQueue() {
+  if (!state.playQueue) return;
+
+  const songs = queueSongs();
+  if (!songs.length) {
+    resetPlayer();
+    return;
+  }
+
+  if (state.playQueue.mode === "shuffle") {
+    if (songs.length > 1) {
+      let nextIndex = state.playQueue.currentIndex;
+      while (nextIndex === state.playQueue.currentIndex) {
+        nextIndex = Math.floor(Math.random() * songs.length);
+      }
+      state.playQueue.currentIndex = nextIndex;
+    }
+  } else if (state.playQueue.mode === "repeatOne") {
+    state.playQueue.currentIndex = Math.max(0, state.playQueue.currentIndex);
+  } else {
+    state.playQueue.currentIndex = Math.max(0, state.playQueue.currentIndex - 1);
+  }
+
+  playSong(songs[state.playQueue.currentIndex], { clearQueue: false });
+}
+
+function togglePlayback() {
+  if (!state.currentSong) return;
+  if (els.audio.paused) {
+    els.audio.play();
+  } else {
+    els.audio.pause();
+  }
 }
 
 function renderSong(song) {
@@ -1116,8 +1176,14 @@ function bindEvents() {
   });
 
   els.audio.addEventListener("play", () => els.nowPlaying.classList.add("is-playing"));
+  els.audio.addEventListener("play", updatePlayerControls);
   els.audio.addEventListener("pause", () => els.nowPlaying.classList.remove("is-playing"));
+  els.audio.addEventListener("pause", updatePlayerControls);
   els.audio.addEventListener("ended", playNextInQueue);
+  els.previousButton.addEventListener("click", playPreviousInQueue);
+  els.playToggleButton.addEventListener("click", togglePlayback);
+  els.nextButton.addEventListener("click", playNextInQueue);
+  updatePlayerControls();
 }
 
 async function boot() {
