@@ -53,6 +53,9 @@ const els = {
   previousButton: document.querySelector("#previous-button"),
   playToggleButton: document.querySelector("#play-toggle-button"),
   nextButton: document.querySelector("#next-button"),
+  progressSlider: document.querySelector("#progress-slider"),
+  currentTime: document.querySelector("#current-time"),
+  durationTime: document.querySelector("#duration-time"),
   currentTitle: document.querySelector("#current-title"),
   currentMeta: document.querySelector("#current-meta"),
   nowPlaying: document.querySelector(".now-playing"),
@@ -92,6 +95,15 @@ function fmtBytes(bytes) {
   const units = ["B", "KB", "MB", "GB"];
   const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
   return `${(bytes / 1024 ** index).toFixed(index ? 1 : 0)} ${units[index]}`;
+}
+
+function fmtTime(seconds) {
+  if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
+  const minutes = Math.floor(seconds / 60);
+  const rest = Math.floor(seconds % 60)
+    .toString()
+    .padStart(2, "0");
+  return `${minutes}:${rest}`;
 }
 
 function fileExtension(name) {
@@ -760,6 +772,7 @@ function resetPlayer() {
   state.playQueue = null;
   els.currentTitle.textContent = "还没有播放歌曲";
   els.currentMeta.textContent = "上传一首歌，或者从曲库点播放。";
+  updateProgress();
   updatePlayerControls();
 }
 
@@ -795,6 +808,24 @@ function updatePlayerControls() {
   els.playToggleButton.classList.toggle("is-playing", hasSong && !els.audio.paused);
   els.playToggleButton.title = hasSong && !els.audio.paused ? "暂停" : "播放";
   els.playToggleButton.setAttribute("aria-label", hasSong && !els.audio.paused ? "暂停" : "播放");
+}
+
+function updateProgress() {
+  const duration = els.audio.duration;
+  const current = els.audio.currentTime;
+  const hasDuration = Number.isFinite(duration) && duration > 0;
+
+  els.progressSlider.disabled = !state.currentSong || !hasDuration;
+  els.progressSlider.value = hasDuration ? String((current / duration) * 100) : "0";
+  els.currentTime.textContent = fmtTime(current);
+  els.durationTime.textContent = fmtTime(duration);
+}
+
+function seekAudio(event) {
+  const duration = els.audio.duration;
+  if (!Number.isFinite(duration) || duration <= 0) return;
+  els.audio.currentTime = (Number(event.target.value) / 100) * duration;
+  updateProgress();
 }
 
 function playSong(song, options = {}) {
@@ -1180,6 +1211,10 @@ function bindEvents() {
   els.audio.addEventListener("pause", () => els.nowPlaying.classList.remove("is-playing"));
   els.audio.addEventListener("pause", updatePlayerControls);
   els.audio.addEventListener("ended", playNextInQueue);
+  els.audio.addEventListener("loadedmetadata", updateProgress);
+  els.audio.addEventListener("timeupdate", updateProgress);
+  els.audio.addEventListener("durationchange", updateProgress);
+  els.progressSlider.addEventListener("input", seekAudio);
   els.previousButton.addEventListener("click", playPreviousInQueue);
   els.playToggleButton.addEventListener("click", togglePlayback);
   els.nextButton.addEventListener("click", playNextInQueue);

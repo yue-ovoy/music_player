@@ -10,9 +10,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.jpg" />
-    <link rel="stylesheet" href="./styles.css?v=20260522-player-controls" />
+    <link rel="stylesheet" href="./styles.css?v=20260522-progress-bar" />
     <script src="./config.js"></script>
-    <script type="module" src="./app.js?v=20260522-player-controls"></script>
+    <script type="module" src="./app.js?v=20260522-progress-bar"></script>
   </head>
   <body>
     <main class="shell">
@@ -103,6 +103,12 @@
                 <path d="M18 5v14"></path>
               </svg>
             </button>
+          </div>
+
+          <div class="progress-panel" aria-label="播放进度">
+            <span id="current-time">0:00</span>
+            <input id="progress-slider" type="range" min="0" max="100" step="0.1" value="0" aria-label="播放进度" disabled />
+            <span id="duration-time">0:00</span>
           </div>
 
           <audio id="audio-player" controls preload="metadata"></audio>

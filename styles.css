@@ -597,9 +597,24 @@ h1 {
   display: block;
 }
 
-audio {
+.progress-panel {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 16px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.progress-panel input {
   width: 100%;
-  margin-bottom: 14px;
+  accent-color: var(--rose);
+}
+
+audio {
+  display: none;
 }
 
 .tabs {
