@@ -584,6 +584,18 @@ function renderMessageBadge() {
   const count = unreadMessages().length;
   els.messageBadge.hidden = count === 0;
   els.messageBadge.textContent = count > 9 ? "9+" : String(count);
+  updateAppIconBadge(count);
+}
+
+function updateAppIconBadge(count) {
+  if (!("setAppBadge" in navigator) || !("clearAppBadge" in navigator)) return;
+
+  if (count > 0) {
+    navigator.setAppBadge(count).catch(() => {});
+    return;
+  }
+
+  navigator.clearAppBadge().catch(() => {});
 }
 
 async function loadMessages({ markRead = false } = {}) {
