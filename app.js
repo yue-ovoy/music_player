@@ -74,6 +74,9 @@ const els = {
   publishPostButton: document.querySelector("#publish-post-button"),
   postStatus: document.querySelector("#post-status"),
   postList: document.querySelector("#post-list"),
+  imageViewer: document.querySelector("#image-viewer"),
+  imageViewerImg: document.querySelector("#image-viewer-img"),
+  imageViewerClose: document.querySelector("#image-viewer-close"),
   workspace: document.querySelector(".workspace"),
   uploadPage: document.querySelector("#upload-page"),
   openUploadButton: document.querySelector("#open-upload-button"),
@@ -1047,6 +1050,7 @@ function renderPostCard(post) {
   if (post.imageUrl) {
     image.src = post.imageUrl;
     image.hidden = false;
+    image.addEventListener("click", () => openImageViewer(post.imageUrl));
   }
 
   const commentList = card.querySelector(".comment-list");
@@ -1113,6 +1117,16 @@ async function openPosts() {
 function closePosts() {
   showAppView("main");
   window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function openImageViewer(src) {
+  els.imageViewerImg.src = src;
+  els.imageViewer.hidden = false;
+}
+
+function closeImageViewer() {
+  els.imageViewer.hidden = true;
+  els.imageViewerImg.removeAttribute("src");
 }
 
 function resetPostComposer() {
@@ -2073,6 +2087,10 @@ function bindEvents() {
   els.postForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     await createPost();
+  });
+  els.imageViewerClose.addEventListener("click", closeImageViewer);
+  els.imageViewer.addEventListener("click", (event) => {
+    if (event.target === els.imageViewer) closeImageViewer();
   });
   els.chatForm.addEventListener("submit", async (event) => {
     event.preventDefault();

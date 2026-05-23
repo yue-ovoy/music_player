@@ -10,9 +10,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.jpg" />
-    <link rel="stylesheet" href="./styles.css?v=20260523-post-icon" />
+    <link rel="stylesheet" href="./styles.css?v=20260523-post-image-viewer" />
     <script src="./config.js"></script>
-    <script type="module" src="./app.js?v=20260523-post-icon"></script>
+    <script type="module" src="./app.js?v=20260523-post-image-viewer"></script>
   </head>
   <body>
     <main class="shell">
@@ -122,6 +122,11 @@
         <div class="post-list" id="post-list" aria-live="polite"></div>
         <button class="compose-post-button" id="compose-post-button" type="button" title="发布小记" aria-label="发布小记">+</button>
       </section>
+
+      <div class="image-viewer" id="image-viewer" hidden>
+        <button class="image-viewer-close" id="image-viewer-close" type="button" aria-label="关闭图片">×</button>
+        <img id="image-viewer-img" alt="" />
+      </div>
 
       <section class="workspace">
         <section class="main-panel">
