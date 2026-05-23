@@ -112,6 +112,7 @@ input {
 .chat-message {
   display: grid;
   grid-template-columns: 34px minmax(0, 1fr);
+  grid-template-rows: auto auto;
   gap: 8px;
   align-items: end;
 }
@@ -120,16 +121,33 @@ input {
   grid-template-columns: minmax(0, 1fr) 34px;
 }
 
+.chat-time {
+  grid-column: 1 / -1;
+  justify-self: center;
+  border-radius: 999px;
+  padding: 3px 9px;
+  background: rgba(113, 104, 95, 0.1);
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
 .chat-message.is-mine .chat-avatar {
   grid-column: 2;
+  grid-row: 2;
 }
 
 .chat-message.is-mine .chat-bubble {
   grid-column: 1;
-  grid-row: 1;
+  grid-row: 2;
   justify-self: end;
   background: rgba(201, 81, 105, 0.13);
   border-color: rgba(201, 81, 105, 0.24);
+}
+
+.chat-message.is-theirs .chat-avatar,
+.chat-message.is-theirs .chat-bubble {
+  grid-row: 2;
 }
 
 .chat-avatar {
@@ -148,15 +166,8 @@ input {
   background: #fffdf8;
 }
 
-.chat-name,
-.chat-time {
-  color: var(--muted);
-  font-size: 0.72rem;
-  font-weight: 800;
-}
-
 .chat-text {
-  margin: 4px 0;
+  margin: 0;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
   line-height: 1.5;

@@ -671,17 +671,15 @@ function renderChat() {
     const item = document.createElement("article");
     item.className = `chat-message ${isMine ? "is-mine" : "is-theirs"}`;
     item.innerHTML = `
+      <time class="chat-time"></time>
       <img class="chat-avatar" alt="" />
       <div class="chat-bubble">
-        <div class="chat-name"></div>
         <div class="chat-text"></div>
-        <time class="chat-time"></time>
       </div>
     `;
     item.querySelector(".chat-avatar").src = profile.avatarUrl || avatarDataUrl(profile.displayName);
-    item.querySelector(".chat-name").textContent = profile.displayName || message.senderName;
-    item.querySelector(".chat-text").textContent = message.body;
     item.querySelector(".chat-time").textContent = fmtChatTime(message.createdAt);
+    item.querySelector(".chat-text").textContent = message.body;
     els.chatList.append(item);
   });
 
@@ -690,11 +688,18 @@ function renderChat() {
   });
 }
 
+function focusChatInput() {
+  requestAnimationFrame(() => {
+    els.chatForm.scrollIntoView({ block: "end", behavior: "smooth" });
+    els.chatInput.focus({ preventScroll: true });
+  });
+}
+
 async function openChat() {
   showAppView("chat");
-  els.chatInput.focus();
+  focusChatInput();
   await loadMessages({ markRead: true });
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  focusChatInput();
 }
 
 async function closeChat() {
