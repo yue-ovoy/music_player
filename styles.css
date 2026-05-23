@@ -784,6 +784,10 @@ audio {
   background: rgba(201, 81, 105, 0.1);
 }
 
+.song-menu button.muted {
+  color: var(--muted);
+}
+
 .song-menu button.danger {
   color: var(--rose-dark);
 }

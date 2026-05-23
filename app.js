@@ -682,6 +682,18 @@ async function createPlaylist(name) {
   } else {
     await localPut("playlists", playlist);
   }
+
+  return playlist;
+}
+
+async function createPlaylistAndAddSong(song) {
+  const name = prompt("新歌单叫什么名字？");
+  const trimmedName = name?.trim();
+  if (!trimmedName) return;
+
+  const playlist = await createPlaylist(trimmedName);
+  await loadData();
+  await addToPlaylist(song.id, playlist.id);
 }
 
 async function addToPlaylist(songId, playlistId) {
@@ -1084,6 +1096,17 @@ function renderSongMenu(row, song, context = {}) {
 
   playlistList.innerHTML = "";
 
+  const newPlaylistButton = document.createElement("button");
+  newPlaylistButton.type = "button";
+  newPlaylistButton.className = "muted";
+  newPlaylistButton.textContent = "+ 新建歌单";
+  newPlaylistButton.addEventListener("click", async (event) => {
+    event.stopPropagation();
+    closeSongMenus();
+    await createPlaylistAndAddSong(song);
+  });
+  playlistList.append(newPlaylistButton);
+
   if (!state.playlists.length) {
     const empty = document.createElement("div");
     empty.className = "song-menu-empty";
@@ -1107,12 +1130,6 @@ function renderSongMenu(row, song, context = {}) {
     event.stopPropagation();
     mainActions.hidden = true;
     playlistPanel.hidden = false;
-  });
-
-  menu.querySelector('[data-action="back"]').addEventListener("click", (event) => {
-    event.stopPropagation();
-    playlistPanel.hidden = true;
-    mainActions.hidden = false;
   });
 
   menu.querySelector('[data-action="delete"]').addEventListener("click", (event) => {
@@ -1151,8 +1168,6 @@ function renderSong(song, context = {}) {
         }
       </div>
       <div class="song-menu-playlists" hidden>
-        <button type="button" data-action="back">返回</button>
-        <div class="song-menu-label">选择歌单</div>
         <div class="song-menu-playlist-list"></div>
       </div>
     </div>
