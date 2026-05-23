@@ -190,6 +190,55 @@ input {
   font-weight: 700;
 }
 
+.chat-bubble.music-card {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-width: min(280px, 72vw);
+  cursor: pointer;
+}
+
+.music-card-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: rgba(201, 81, 105, 0.14);
+  color: var(--rose-dark);
+}
+
+.music-card-icon svg {
+  width: 23px;
+  height: 23px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.music-card-copy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.music-card-label,
+.music-card-copy span:last-child {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.music-card-copy strong {
+  overflow: hidden;
+  color: var(--ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .chat-form {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

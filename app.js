@@ -657,6 +657,34 @@ async function sendMessage(body) {
   await loadMessages({ markRead: state.chatOpen });
 }
 
+function songRecommendationBody(song) {
+  return JSON.stringify({
+    type: "song-recommendation",
+    songId: song.id,
+    title: song.title,
+    artist: song.artist || "未知歌手",
+  });
+}
+
+function parseMessageBody(body) {
+  try {
+    const parsed = JSON.parse(body);
+    if (parsed?.type === "song-recommendation" && parsed.songId) return parsed;
+  } catch {
+    // Plain text messages are stored directly in body.
+  }
+  return { type: "text", text: body };
+}
+
+async function recommendSong(song) {
+  if (!state.cloud) {
+    alert("推荐歌曲需要云端模式。");
+    return;
+  }
+
+  await sendMessage(songRecommendationBody(song));
+}
+
 function otherProfileName() {
   return state.profiles.find((profile) => profile.id !== state.currentProfileId)?.displayName || "她";
 }
@@ -685,6 +713,7 @@ function renderChat() {
 
   state.messages.forEach((message) => {
     const isMine = message.senderId === state.currentProfileId;
+    const content = parseMessageBody(message.body);
     const profile =
       state.profiles.find((item) => item.id === message.senderId) || {
         displayName: message.senderName,
@@ -701,13 +730,48 @@ function renderChat() {
     `;
     item.querySelector(".chat-avatar").src = profile.avatarUrl || avatarDataUrl(profile.displayName);
     item.querySelector(".chat-time").textContent = fmtChatTime(message.createdAt);
-    item.querySelector(".chat-text").textContent = message.body;
+    const bubble = item.querySelector(".chat-bubble");
+    if (content.type === "song-recommendation") {
+      bubble.classList.add("music-card");
+      bubble.innerHTML = `
+        <div class="music-card-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M9 18V5l12-2v13"></path>
+            <circle cx="6" cy="18" r="3"></circle>
+            <circle cx="18" cy="16" r="3"></circle>
+          </svg>
+        </div>
+        <div class="music-card-copy">
+          <span class="music-card-label">推荐歌曲</span>
+          <strong></strong>
+          <span></span>
+        </div>
+      `;
+      bubble.querySelector("strong").textContent = content.title || "一首歌";
+      bubble.querySelector(".music-card-copy span:last-child").textContent = content.artist || "未知歌手";
+      bubble.addEventListener("click", () => playRecommendedSong(content.songId));
+    } else {
+      item.querySelector(".chat-text").textContent = content.text;
+    }
     els.chatList.append(item);
   });
 
   requestAnimationFrame(() => {
     els.chatList.scrollTop = els.chatList.scrollHeight;
   });
+}
+
+function playRecommendedSong(songId) {
+  const song = state.songs.find((item) => item.id === songId);
+  if (!song) {
+    els.chatStatus.textContent = "这首歌现在不在曲库里。";
+    return;
+  }
+
+  showAppView("main");
+  playSongInCollection(song, "共享曲库", state.songs);
+  renderMessageBadge();
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function focusChatInput() {
@@ -1347,6 +1411,8 @@ function menuIcon(name) {
       '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"></path></svg>',
     plus:
       '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>',
+    thumb:
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10v11"></path><path d="M15 5 12 10h7.5a2 2 0 0 1 2 2.3l-1 6.5a2.5 2.5 0 0 1-2.5 2.2H7a3 3 0 0 1-3-3v-5a3 3 0 0 1 3-3h1l4-7a2 2 0 0 1 3 2z"></path></svg>',
     trash:
       '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v5"></path><path d="M14 11v5"></path></svg>',
   };
@@ -1382,6 +1448,14 @@ function renderSongMenu(row, song, context = {}) {
       await toggleFavoriteSong(song);
     });
     mainActions.append(favoriteButton);
+
+    const recommendButton = createMenuButton("推荐", "thumb");
+    recommendButton.addEventListener("click", async (event) => {
+      event.stopPropagation();
+      closeSongMenus();
+      await recommendSong(song);
+    });
+    mainActions.append(recommendButton);
 
     const removeButton = createMenuButton("删除", "trash", "danger");
     removeButton.addEventListener("click", async (event) => {
@@ -1431,6 +1505,12 @@ function renderSongMenu(row, song, context = {}) {
     await toggleFavoriteSong(song);
   });
 
+  menu.querySelector('[data-action="recommend"]').addEventListener("click", async (event) => {
+    event.stopPropagation();
+    closeSongMenus();
+    await recommendSong(song);
+  });
+
   menu.querySelector('[data-action="show-playlists"]').addEventListener("click", (event) => {
     event.stopPropagation();
     mainActions.hidden = true;
@@ -1469,7 +1549,7 @@ function renderSong(song, context = {}) {
         ${
           isPlaylistSong
             ? ""
-            : `<button class="favorite${isFavoriteSong(song) ? " is-active" : ""}" type="button" data-action="favorite">${menuIcon("heart")}<span>${isFavoriteSong(song) ? "取消喜爱" : "喜爱"}</span></button><button type="button" data-action="show-playlists">${menuIcon("plus")}<span>加入歌单</span></button><button class="danger" type="button" data-action="delete">${menuIcon("trash")}<span>删除</span></button>`
+            : `<button class="favorite${isFavoriteSong(song) ? " is-active" : ""}" type="button" data-action="favorite">${menuIcon("heart")}<span>${isFavoriteSong(song) ? "取消喜爱" : "喜爱"}</span></button><button type="button" data-action="recommend">${menuIcon("thumb")}<span>推荐</span></button><button type="button" data-action="show-playlists">${menuIcon("plus")}<span>加入歌单</span></button><button class="danger" type="button" data-action="delete">${menuIcon("trash")}<span>删除</span></button>`
         }
       </div>
       <div class="song-menu-playlists" hidden>
