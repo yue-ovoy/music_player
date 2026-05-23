@@ -24,14 +24,26 @@ create table if not exists public.profiles (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.messages (
+  id uuid primary key,
+  room_code text not null,
+  sender_id text not null,
+  sender_name text not null,
+  body text not null,
+  read_by text[] not null default '{}',
+  created_at timestamptz not null default now()
+);
+
 create index if not exists songs_room_code_idx on public.songs (room_code, created_at desc);
 create index if not exists playlists_room_code_idx on public.playlists (room_code, created_at desc);
+create index if not exists messages_room_code_idx on public.messages (room_code, created_at asc);
 
 alter table public.songs add column if not exists artist text;
 
 alter table public.songs enable row level security;
 alter table public.playlists enable row level security;
 alter table public.profiles enable row level security;
+alter table public.messages enable row level security;
 
 drop policy if exists "Anyone can read songs by room code" on public.songs;
 create policy "Anyone can read songs by room code"
@@ -82,6 +94,22 @@ with check (true);
 drop policy if exists "Anyone can update profiles" on public.profiles;
 create policy "Anyone can update profiles"
 on public.profiles for update
+using (true)
+with check (true);
+
+drop policy if exists "Anyone can read messages" on public.messages;
+create policy "Anyone can read messages"
+on public.messages for select
+using (true);
+
+drop policy if exists "Anyone can add messages" on public.messages;
+create policy "Anyone can add messages"
+on public.messages for insert
+with check (true);
+
+drop policy if exists "Anyone can update messages" on public.messages;
+create policy "Anyone can update messages"
+on public.messages for update
 using (true)
 with check (true);
 

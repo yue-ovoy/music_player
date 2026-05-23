@@ -5,6 +5,7 @@ const state = {
   songs: [],
   playlists: [],
   profiles: [],
+  messages: [],
   currentSong: null,
   playQueue: null,
   playMode: localStorage.getItem("playMode") || "order",
@@ -14,12 +15,17 @@ const state = {
   supabaseUrl: "",
   supabaseAnonKey: "",
   cloud: false,
+  chatOpen: false,
+  chatReady: true,
 };
 
 let deferredInstallPrompt = null;
+let messagePollTimer = null;
 
 const els = {
   forceUpdateButton: document.querySelector("#force-update-button"),
+  messageButton: document.querySelector("#message-button"),
+  messageBadge: document.querySelector("#message-badge"),
   installAppButton: document.querySelector("#install-app-button"),
   installTip: document.querySelector("#install-tip"),
   installTipText: document.querySelector("#install-tip-text"),
@@ -39,6 +45,13 @@ const els = {
   avatarCropStatus: document.querySelector("#avatar-crop-status"),
   avatarZoom: document.querySelector("#avatar-zoom"),
   saveProfileButton: document.querySelector("#save-profile-button"),
+  chatPanel: document.querySelector("#chat-panel"),
+  closeChatButton: document.querySelector("#close-chat-button"),
+  chatList: document.querySelector("#chat-list"),
+  chatForm: document.querySelector("#chat-form"),
+  chatInput: document.querySelector("#chat-input"),
+  sendMessageButton: document.querySelector("#send-message-button"),
+  chatStatus: document.querySelector("#chat-status"),
   workspace: document.querySelector(".workspace"),
   uploadPage: document.querySelector("#upload-page"),
   openUploadButton: document.querySelector("#open-upload-button"),
@@ -102,6 +115,15 @@ function fmtTime(seconds) {
     .toString()
     .padStart(2, "0");
   return `${minutes}:${rest}`;
+}
+
+function fmtChatTime(value) {
+  return new Intl.DateTimeFormat("zh-CN", {
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
 }
 
 function fileExtension(name) {
@@ -209,6 +231,7 @@ function selectProfile(id) {
   els.profileHint.hidden = true;
   resetAvatarCrop();
   renderProfile();
+  loadMessages();
 }
 
 function cropFrameSize() {
@@ -524,6 +547,160 @@ async function supabaseRest(path, options = {}) {
   if (response.status === 204) return null;
   const text = await response.text();
   return text ? JSON.parse(text) : null;
+}
+
+function unreadMessages() {
+  return state.messages.filter(
+    (message) => message.senderId !== state.currentProfileId && !message.readBy.includes(state.currentProfileId),
+  );
+}
+
+function renderMessageBadge() {
+  const count = unreadMessages().length;
+  els.messageBadge.hidden = count === 0;
+  els.messageBadge.textContent = count > 9 ? "9+" : String(count);
+}
+
+async function loadMessages({ markRead = false } = {}) {
+  if (!state.cloud) {
+    state.messages = [];
+    state.chatReady = false;
+    renderChat();
+    renderMessageBadge();
+    return;
+  }
+
+  try {
+    const rows = await supabaseRest(
+      `messages?select=*&room_code=eq.${encodeURIComponent(state.room)}&order=created_at.desc&limit=200`,
+    );
+    state.messages = rows.reverse().map((message) => ({
+      id: message.id,
+      room: message.room_code,
+      senderId: message.sender_id,
+      senderName: message.sender_name,
+      body: message.body,
+      readBy: message.read_by || [],
+      createdAt: message.created_at,
+    }));
+    state.chatReady = true;
+    if (markRead) await markMessagesRead();
+  } catch (error) {
+    console.warn("Messages are not ready yet", error);
+    state.chatReady = false;
+    state.messages = [];
+  }
+
+  renderChat();
+  renderMessageBadge();
+}
+
+async function markMessagesRead() {
+  const unread = unreadMessages();
+  if (!state.cloud || !unread.length) return;
+
+  await Promise.all(
+    unread.map((message) => {
+      const readBy = [...new Set([...message.readBy, state.currentProfileId])];
+      message.readBy = readBy;
+      return supabaseRest(`messages?id=eq.${message.id}`, {
+        method: "PATCH",
+        headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({ read_by: readBy }),
+      });
+    }),
+  );
+}
+
+async function sendMessage(body) {
+  const text = body.trim();
+  if (!text || !state.cloud) return;
+  const profile = currentProfile();
+
+  await supabaseRest("messages", {
+    method: "POST",
+    headers: { Prefer: "return=minimal" },
+    body: JSON.stringify({
+      id: uid(),
+      room_code: state.room,
+      sender_id: profile.id,
+      sender_name: profile.displayName,
+      body: text,
+      read_by: [profile.id],
+    }),
+  });
+
+  await loadMessages({ markRead: state.chatOpen });
+}
+
+function otherProfileName() {
+  return state.profiles.find((profile) => profile.id !== state.currentProfileId)?.displayName || "她";
+}
+
+function renderChat() {
+  if (!els.chatList) return;
+
+  if (!state.chatReady) {
+    els.chatList.innerHTML = '<div class="chat-empty">聊天还没配置好。先在 Supabase 里重新运行 SQL。</div>';
+    els.chatStatus.textContent = state.cloud ? "等待 messages 表。" : "聊天需要云端模式。";
+    return;
+  }
+
+  els.chatStatus.textContent = state.messages.length ? "" : `给${otherProfileName()}发第一条消息。`;
+  els.chatList.innerHTML = "";
+
+  if (!state.messages.length) {
+    els.chatList.innerHTML = '<div class="chat-empty">还没有消息。</div>';
+    return;
+  }
+
+  state.messages.forEach((message) => {
+    const isMine = message.senderId === state.currentProfileId;
+    const profile =
+      state.profiles.find((item) => item.id === message.senderId) || {
+        displayName: message.senderName,
+        avatarUrl: "",
+      };
+    const item = document.createElement("article");
+    item.className = `chat-message ${isMine ? "is-mine" : "is-theirs"}`;
+    item.innerHTML = `
+      <img class="chat-avatar" alt="" />
+      <div class="chat-bubble">
+        <div class="chat-name"></div>
+        <div class="chat-text"></div>
+        <time class="chat-time"></time>
+      </div>
+    `;
+    item.querySelector(".chat-avatar").src = profile.avatarUrl || avatarDataUrl(profile.displayName);
+    item.querySelector(".chat-name").textContent = profile.displayName || message.senderName;
+    item.querySelector(".chat-text").textContent = message.body;
+    item.querySelector(".chat-time").textContent = fmtChatTime(message.createdAt);
+    els.chatList.append(item);
+  });
+
+  requestAnimationFrame(() => {
+    els.chatList.scrollTop = els.chatList.scrollHeight;
+  });
+}
+
+async function openChat() {
+  state.chatOpen = true;
+  els.chatPanel.hidden = false;
+  els.chatInput.focus();
+  await loadMessages({ markRead: true });
+}
+
+async function closeChat() {
+  state.chatOpen = false;
+  els.chatPanel.hidden = true;
+  renderMessageBadge();
+}
+
+function startMessagePolling() {
+  if (messagePollTimer) clearInterval(messagePollTimer);
+  messagePollTimer = setInterval(() => {
+    loadMessages({ markRead: state.chatOpen });
+  }, 8000);
 }
 
 async function loadData() {
@@ -1326,6 +1503,23 @@ function bindEvents() {
     cropState.dragging = false;
   });
   els.saveProfileButton.addEventListener("click", saveProfile);
+  els.messageButton.addEventListener("click", openChat);
+  els.closeChatButton.addEventListener("click", closeChat);
+  els.chatForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const text = els.chatInput.value;
+    if (!text.trim()) return;
+    els.sendMessageButton.disabled = true;
+    try {
+      await sendMessage(text);
+      els.chatInput.value = "";
+    } catch (error) {
+      els.chatStatus.textContent = `发送失败：${error.message}`;
+      console.error(error);
+    } finally {
+      els.sendMessageButton.disabled = false;
+    }
+  });
   els.openUploadButton.addEventListener("click", showUploadPage);
   els.backToLibraryButton.addEventListener("click", showLibraryPage);
   els.artistName.addEventListener("change", (event) => setArtist(event.target.value));
@@ -1415,6 +1609,8 @@ async function boot() {
   await initSupabase();
   await loadProfiles();
   askForProfileIfNeeded();
+  await loadMessages();
+  startMessagePolling();
   await loadData();
 }
 

@@ -10,9 +10,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.jpg" />
-    <link rel="stylesheet" href="./styles.css?v=20260522-song-meta-cleanup" />
+    <link rel="stylesheet" href="./styles.css?v=20260522-chat" />
     <script src="./config.js"></script>
-    <script type="module" src="./app.js?v=20260522-song-meta-cleanup"></script>
+    <script type="module" src="./app.js?v=20260522-chat"></script>
   </head>
   <body>
     <main class="shell">
@@ -23,6 +23,12 @@
         </button>
         <div class="intro-actions">
           <button class="install-button" id="install-app-button" type="button" hidden>安装</button>
+          <button class="message-button" id="message-button" type="button" title="消息" aria-label="消息">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"></path>
+            </svg>
+            <span class="message-badge" id="message-badge" hidden>0</span>
+          </button>
           <button class="update-button" id="force-update-button" type="button" title="强制更新" aria-label="强制更新">↻</button>
         </div>
       </section>
@@ -66,6 +72,19 @@
         </div>
 
         <button class="primary-button" id="save-profile-button" type="button">保存资料</button>
+      </section>
+
+      <section class="panel chat-panel" id="chat-panel" hidden>
+        <div class="section-bar">
+          <h3>消息</h3>
+          <button class="ghost-button" id="close-chat-button" type="button">关闭</button>
+        </div>
+        <div class="chat-list" id="chat-list" aria-live="polite"></div>
+        <form class="chat-form" id="chat-form">
+          <input id="chat-input" type="text" maxlength="500" placeholder="写点什么给她" autocomplete="off" />
+          <button class="secondary-button compact" id="send-message-button" type="submit">发送</button>
+        </form>
+        <p class="chat-status" id="chat-status"></p>
       </section>
 
       <section class="workspace">

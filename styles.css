@@ -74,8 +74,110 @@ input {
   padding: 16px;
 }
 
-.profile-panel[hidden] {
+.profile-panel[hidden],
+.chat-panel[hidden] {
   display: none;
+}
+
+.chat-panel {
+  width: min(620px, 100%);
+  margin: 0 0 18px auto;
+  padding: 16px;
+}
+
+.chat-list {
+  max-height: min(58vh, 520px);
+  display: grid;
+  gap: 12px;
+  overflow: auto;
+  padding: 4px 2px 12px;
+}
+
+.chat-message {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 8px;
+  align-items: end;
+}
+
+.chat-message.is-mine {
+  grid-template-columns: minmax(0, 1fr) 34px;
+}
+
+.chat-message.is-mine .chat-avatar {
+  grid-column: 2;
+}
+
+.chat-message.is-mine .chat-bubble {
+  grid-column: 1;
+  grid-row: 1;
+  justify-self: end;
+  background: rgba(201, 81, 105, 0.13);
+  border-color: rgba(201, 81, 105, 0.24);
+}
+
+.chat-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.chat-bubble {
+  width: fit-content;
+  max-width: min(78%, 360px);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 10px;
+  background: #fffdf8;
+}
+
+.chat-name,
+.chat-time {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.chat-text {
+  margin: 4px 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  line-height: 1.5;
+  font-weight: 700;
+}
+
+.chat-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.chat-form input {
+  min-height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 12px;
+  background: #fffdf8;
+  color: var(--ink);
+  outline: none;
+}
+
+.chat-form input:focus {
+  border-color: var(--rose);
+  box-shadow: 0 0 0 3px rgba(201, 81, 105, 0.14);
+}
+
+.chat-empty,
+.chat-status {
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.chat-status {
+  margin: 8px 0 0;
 }
 
 .profile-hint {
@@ -227,7 +329,9 @@ h1 {
   display: none;
 }
 
-.update-button {
+.update-button,
+.message-button {
+  position: relative;
   width: 40px;
   height: 40px;
   border: 1px solid rgba(157, 49, 72, 0.2);
@@ -238,6 +342,38 @@ h1 {
   font-weight: 800;
   line-height: 1;
   cursor: pointer;
+}
+
+.message-button svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.message-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border: 2px solid #fffaf2;
+  border-radius: 999px;
+  padding: 0 4px;
+  background: var(--rose);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.message-badge[hidden] {
+  display: none;
 }
 
 .update-button:disabled {
