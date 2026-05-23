@@ -88,10 +88,6 @@ function uid() {
   return crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-function fmtDate(value) {
-  return new Intl.DateTimeFormat("zh-CN", { month: "short", day: "numeric" }).format(new Date(value));
-}
-
 function fmtBytes(bytes) {
   if (!bytes) return "0 B";
   const units = ["B", "KB", "MB", "GB"];
@@ -542,7 +538,6 @@ async function loadData() {
       room: song.room_code,
       title: song.title,
       artist: song.artist || "",
-      uploader: song.uploader_name,
       createdAt: song.created_at,
       url: song.public_url,
       storagePath: song.storage_path,
@@ -630,7 +625,6 @@ async function uploadSong(file, onProgress = () => {}) {
     room: state.room,
     title: file.name.replace(/\.[^.]+$/, ""),
     artist: state.artist || "未知歌手",
-    uploader: currentProfile().displayName || "匿名",
     createdAt: new Date().toISOString(),
   };
 
@@ -646,7 +640,6 @@ async function uploadSong(file, onProgress = () => {}) {
         room_code: song.room,
         title: song.title,
         artist: song.artist,
-        uploader_name: song.uploader,
         storage_path: path,
         public_url: publicUrl,
       }),
@@ -811,7 +804,7 @@ function resetPlayer() {
 }
 
 function playbackMeta(song) {
-  const base = `${song.artist || "未知歌手"} · ${song.uploader} 上传 · ${fmtDate(song.createdAt)}`;
+  const base = song.artist || "未知歌手";
   if (!state.playQueue) return base;
   const modeNames = {
     order: "顺序播放",
@@ -1173,7 +1166,7 @@ function renderSong(song, context = {}) {
     </div>
   `;
   row.querySelector(".song-title-text").textContent = song.title;
-  row.querySelector(".song-meta").textContent = `${song.artist || "未知歌手"} · ${song.uploader} · ${fmtDate(song.createdAt)}`;
+  row.querySelector(".song-meta").textContent = song.artist || "未知歌手";
 
   row.addEventListener("click", () => handleSongCardClick(song, collectionName, getSongs()));
   row.querySelector('[data-action="menu"]').addEventListener("click", (event) => {
