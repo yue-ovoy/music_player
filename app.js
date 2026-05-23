@@ -976,6 +976,19 @@ function closeSongMenus(exceptMenu = null) {
   });
 }
 
+function hasOpenSongMenu() {
+  return Array.from(document.querySelectorAll(".song-menu")).some((menu) => !menu.hidden);
+}
+
+function handleOutsideSongMenuClick(event) {
+  if (!hasOpenSongMenu()) return;
+  if (event.target.closest(".song-menu") || event.target.closest('[data-action="menu"]')) return;
+
+  closeSongMenus();
+  event.preventDefault();
+  event.stopPropagation();
+}
+
 function updatePlayingRows() {
   document.querySelectorAll(".song-row[data-song-id]").forEach((row) => {
     updateSongRow(row);
@@ -1379,7 +1392,7 @@ function bindEvents() {
   els.previousButton.addEventListener("click", playPreviousInQueue);
   els.playToggleButton.addEventListener("click", togglePlayback);
   els.nextButton.addEventListener("click", playNextInQueue);
-  document.addEventListener("click", () => closeSongMenus());
+  document.addEventListener("click", handleOutsideSongMenuClick, true);
   updatePlayerControls();
 }
 
