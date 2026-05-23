@@ -1,5 +1,9 @@
 const dbName = "our-little-player";
 const defaultRoom = "林干嘛";
+const favoritePlaylists = {
+  shuishui: { id: "11111111-1111-4111-8111-111111111111", name: "水水的最爱" },
+  zhi: { id: "22222222-2222-4222-8222-222222222222", name: "知的最爱" },
+};
 const savedProfileId = localStorage.getItem("currentProfileId");
 const state = {
   songs: [],
@@ -166,6 +170,18 @@ function fallbackProfiles() {
 
 function currentProfile() {
   return state.profiles.find((profile) => profile.id === state.currentProfileId) || state.profiles[0] || fallbackProfiles()[0];
+}
+
+function favoritePlaylistName(profileId = state.currentProfileId) {
+  return (favoritePlaylists[profileId] || favoritePlaylists.shuishui).name;
+}
+
+function favoritePlaylistFor(profileId = state.currentProfileId) {
+  return state.playlists.find((playlist) => playlist.name === favoritePlaylistName(profileId));
+}
+
+function isFavoriteSong(song) {
+  return Boolean(favoritePlaylistFor()?.songIds.includes(song.id));
 }
 
 function profileInitial(name) {
@@ -721,7 +737,7 @@ function startMessagePolling() {
   }, 8000);
 }
 
-async function loadData() {
+async function loadData(options = {}) {
   if (state.cloud) {
     const [songsResult, playlistsResult] = await Promise.all([
       supabaseRest(`songs?select=*&room_code=eq.${encodeURIComponent(state.room)}&order=created_at.desc`),
@@ -752,6 +768,7 @@ async function loadData() {
   }
 
   render();
+  if (!options.skipFavoriteSetup) await ensureFavoritePlaylists();
 }
 
 function encodeStoragePath(path) {
@@ -874,6 +891,41 @@ async function createPlaylist(name) {
   return playlist;
 }
 
+async function ensureFavoritePlaylists() {
+  const missingPlaylists = Object.values(favoritePlaylists).filter(
+    (favorite) => !state.playlists.some((playlist) => playlist.name === favorite.name),
+  );
+  if (!missingPlaylists.length) return;
+
+  await Promise.all(
+    missingPlaylists.map((favorite) => {
+      const playlist = {
+        id: favorite.id,
+        room: state.room,
+        name: favorite.name,
+        songIds: [],
+        createdAt: new Date().toISOString(),
+      };
+
+      if (state.cloud) {
+        return supabaseRest("playlists?on_conflict=id", {
+          method: "POST",
+          headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+          body: JSON.stringify({
+            id: playlist.id,
+            room_code: playlist.room,
+            name: playlist.name,
+            song_ids: playlist.songIds,
+          }),
+        });
+      }
+
+      return localPut("playlists", playlist);
+    }),
+  );
+  await loadData({ skipFavoriteSetup: true });
+}
+
 async function createPlaylistAndAddSong(song) {
   const name = prompt("新歌单叫什么名字？");
   const trimmedName = name?.trim();
@@ -900,6 +952,35 @@ async function addToPlaylist(songId, playlistId) {
   }
 
   render();
+}
+
+async function savePlaylistSongs(playlist) {
+  if (state.cloud) {
+    await supabaseRest(`playlists?id=eq.${playlist.id}`, {
+      method: "PATCH",
+      headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({ song_ids: playlist.songIds }),
+    });
+  } else {
+    await localPut("playlists", playlist);
+  }
+}
+
+async function toggleFavoriteSong(song) {
+  let playlist = favoritePlaylistFor();
+  if (!playlist) {
+    playlist = await createPlaylist(favoritePlaylistName());
+    state.playlists = [playlist, ...state.playlists];
+  }
+
+  if (playlist.songIds.includes(song.id)) {
+    playlist.songIds = playlist.songIds.filter((id) => id !== song.id);
+  } else {
+    playlist.songIds = [...playlist.songIds, song.id];
+  }
+
+  await savePlaylistSongs(playlist);
+  await loadData();
 }
 
 async function removeSongFromPlaylists(songId) {
@@ -1260,6 +1341,27 @@ function bindPlaybackButtons(container, getSongs, name, stopSummary = false) {
   });
 }
 
+function menuIcon(name) {
+  const icons = {
+    heart:
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"></path></svg>',
+    plus:
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>',
+    trash:
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v5"></path><path d="M14 11v5"></path></svg>',
+  };
+  return icons[name] || "";
+}
+
+function createMenuButton(label, iconName, className = "") {
+  const button = document.createElement("button");
+  button.type = "button";
+  if (className) button.className = className;
+  button.innerHTML = `${menuIcon(iconName)}<span></span>`;
+  button.querySelector("span").textContent = label;
+  return button;
+}
+
 function renderSongMenu(row, song, context = {}) {
   const menu = row.querySelector(".song-menu");
   const mainActions = menu.querySelector(".song-menu-main");
@@ -1269,10 +1371,19 @@ function renderSongMenu(row, song, context = {}) {
 
   if (playlist) {
     mainActions.innerHTML = "";
-    const removeButton = document.createElement("button");
-    removeButton.type = "button";
-    removeButton.className = "danger";
-    removeButton.textContent = "删除";
+    const favoriteButton = createMenuButton(
+      isFavoriteSong(song) ? "取消喜爱" : "喜爱",
+      "heart",
+      `favorite${isFavoriteSong(song) ? " is-active" : ""}`,
+    );
+    favoriteButton.addEventListener("click", async (event) => {
+      event.stopPropagation();
+      closeSongMenus();
+      await toggleFavoriteSong(song);
+    });
+    mainActions.append(favoriteButton);
+
+    const removeButton = createMenuButton("删除", "trash", "danger");
     removeButton.addEventListener("click", async (event) => {
       event.stopPropagation();
       closeSongMenus();
@@ -1287,7 +1398,7 @@ function renderSongMenu(row, song, context = {}) {
   const newPlaylistButton = document.createElement("button");
   newPlaylistButton.type = "button";
   newPlaylistButton.className = "muted";
-  newPlaylistButton.textContent = "+ 新建歌单";
+  newPlaylistButton.innerHTML = `${menuIcon("plus")}<span>新建歌单</span>`;
   newPlaylistButton.addEventListener("click", async (event) => {
     event.stopPropagation();
     closeSongMenus();
@@ -1313,6 +1424,12 @@ function renderSongMenu(row, song, context = {}) {
       playlistList.append(button);
     });
   }
+
+  menu.querySelector('[data-action="favorite"]').addEventListener("click", async (event) => {
+    event.stopPropagation();
+    closeSongMenus();
+    await toggleFavoriteSong(song);
+  });
 
   menu.querySelector('[data-action="show-playlists"]').addEventListener("click", (event) => {
     event.stopPropagation();
@@ -1352,7 +1469,7 @@ function renderSong(song, context = {}) {
         ${
           isPlaylistSong
             ? ""
-            : '<button type="button" data-action="show-playlists">加入歌单</button><button class="danger" type="button" data-action="delete">删除</button>'
+            : `<button class="favorite${isFavoriteSong(song) ? " is-active" : ""}" type="button" data-action="favorite">${menuIcon("heart")}<span>${isFavoriteSong(song) ? "取消喜爱" : "喜爱"}</span></button><button type="button" data-action="show-playlists">${menuIcon("plus")}<span>加入歌单</span></button><button class="danger" type="button" data-action="delete">${menuIcon("trash")}<span>删除</span></button>`
         }
       </div>
       <div class="song-menu-playlists" hidden>
