@@ -308,13 +308,25 @@ body.posts-view .posts-panel {
 }
 
 .posts-panel {
-  grid-template-rows: auto auto auto minmax(0, 1fr);
+  position: relative;
+  grid-template-rows: auto auto minmax(0, 1fr);
+}
+
+.post-composer {
+  margin-bottom: 10px;
+}
+
+.post-composer[hidden] {
+  display: none;
 }
 
 .post-form {
   display: grid;
   gap: 10px;
-  margin-bottom: 10px;
+  border: 1px solid rgba(201, 81, 105, 0.16);
+  border-radius: 8px;
+  padding: 10px;
+  background: rgba(255, 253, 248, 0.9);
 }
 
 .post-form textarea {
@@ -362,13 +374,43 @@ body.posts-view .posts-panel {
   white-space: nowrap;
 }
 
+.post-form-actions {
+  display: grid;
+  grid-template-columns: auto minmax(120px, 1fr);
+  gap: 8px;
+  justify-content: end;
+}
+
+.compose-post-button {
+  position: absolute;
+  right: 18px;
+  bottom: max(18px, env(safe-area-inset-bottom));
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(157, 49, 72, 0.2);
+  border-radius: 50%;
+  background: var(--rose);
+  color: #fff;
+  box-shadow: 0 14px 30px rgba(157, 49, 72, 0.28);
+  font-size: 1.8rem;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.compose-post-button[hidden] {
+  display: none;
+}
+
 .post-list {
   min-height: 0;
   display: grid;
   align-content: start;
   gap: 14px;
   overflow: auto;
-  padding: 4px 2px 12px;
+  padding: 4px 2px 76px;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
 }

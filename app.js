@@ -65,6 +65,9 @@ const els = {
   postsPanel: document.querySelector("#posts-panel"),
   closePostsButton: document.querySelector("#close-posts-button"),
   postForm: document.querySelector("#post-form"),
+  postComposer: document.querySelector("#post-composer"),
+  composePostButton: document.querySelector("#compose-post-button"),
+  cancelPostButton: document.querySelector("#cancel-post-button"),
   postBody: document.querySelector("#post-body"),
   postImageFile: document.querySelector("#post-image-file"),
   postImageName: document.querySelector("#post-image-name"),
@@ -971,10 +974,7 @@ async function createPost() {
       }),
     });
 
-    els.postBody.value = "";
-    els.postImageFile.value = "";
-    els.postImageName.textContent = "";
-    els.postStatus.textContent = "";
+    hidePostComposer({ clear: true });
     await loadPosts();
   } catch (error) {
     els.postStatus.textContent = `发布失败：${error.message}`;
@@ -1103,16 +1103,37 @@ function renderPosts() {
 
 async function openPosts() {
   showAppView("posts");
+  hidePostComposer({ clear: true });
   await loadPosts();
   requestAnimationFrame(() => {
     els.postList.scrollTop = 0;
-    els.postBody.focus({ preventScroll: true });
   });
 }
 
 function closePosts() {
   showAppView("main");
   window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function resetPostComposer() {
+  els.postBody.value = "";
+  els.postImageFile.value = "";
+  els.postImageName.textContent = "";
+  els.postStatus.textContent = "";
+}
+
+function showPostComposer() {
+  els.postComposer.hidden = false;
+  els.composePostButton.hidden = true;
+  requestAnimationFrame(() => {
+    els.postBody.focus({ preventScroll: true });
+  });
+}
+
+function hidePostComposer({ clear = false } = {}) {
+  els.postComposer.hidden = true;
+  els.composePostButton.hidden = false;
+  if (clear) resetPostComposer();
 }
 
 function startMessagePolling() {
@@ -2043,6 +2064,8 @@ function bindEvents() {
   els.messageButton.addEventListener("click", openChat);
   els.closeChatButton.addEventListener("click", closeChat);
   els.closePostsButton.addEventListener("click", closePosts);
+  els.composePostButton.addEventListener("click", showPostComposer);
+  els.cancelPostButton.addEventListener("click", () => hidePostComposer({ clear: true }));
   els.postImageFile.addEventListener("change", () => {
     const file = els.postImageFile.files[0];
     els.postImageName.textContent = file ? file.name : "";
