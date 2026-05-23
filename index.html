@@ -10,9 +10,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.jpg" />
-    <link rel="stylesheet" href="./styles.css?v=20260523-chat-focus" />
+    <link rel="stylesheet" href="./styles.css?v=20260523-chat-title" />
     <script src="./config.js"></script>
-    <script type="module" src="./app.js?v=20260523-chat-focus"></script>
+    <script type="module" src="./app.js?v=20260523-chat-title"></script>
   </head>
   <body>
     <main class="shell">
@@ -76,8 +76,9 @@
 
       <section class="panel chat-panel" id="chat-panel" hidden>
         <div class="section-bar chat-topbar">
-          <h3>消息</h3>
           <button class="ghost-button" id="close-chat-button" type="button">返回</button>
+          <h3 id="chat-title">知</h3>
+          <span aria-hidden="true"></span>
         </div>
         <div class="chat-list" id="chat-list" aria-live="polite"></div>
         <form class="chat-form" id="chat-form">

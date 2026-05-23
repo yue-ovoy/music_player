@@ -47,6 +47,7 @@ const els = {
   avatarZoom: document.querySelector("#avatar-zoom"),
   saveProfileButton: document.querySelector("#save-profile-button"),
   chatPanel: document.querySelector("#chat-panel"),
+  chatTitle: document.querySelector("#chat-title"),
   closeChatButton: document.querySelector("#close-chat-button"),
   chatList: document.querySelector("#chat-list"),
   chatForm: document.querySelector("#chat-form"),
@@ -644,8 +645,13 @@ function otherProfileName() {
   return state.profiles.find((profile) => profile.id !== state.currentProfileId)?.displayName || "她";
 }
 
+function renderChatTitle() {
+  els.chatTitle.textContent = otherProfileName();
+}
+
 function renderChat() {
   if (!els.chatList) return;
+  renderChatTitle();
 
   if (!state.chatReady) {
     els.chatList.innerHTML = '<div class="chat-empty">聊天还没配置好。先在 Supabase 里重新运行 SQL。</div>';

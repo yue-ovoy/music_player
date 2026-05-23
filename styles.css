@@ -102,11 +102,27 @@ input {
   position: sticky;
   top: 0;
   z-index: 2;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
   margin: -16px -16px 14px;
   padding: 16px;
   border-bottom: 1px solid rgba(68, 49, 39, 0.08);
   background: rgba(255, 250, 242, 0.88);
   backdrop-filter: blur(16px);
+}
+
+.chat-topbar h3 {
+  margin: 0;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-topbar > span {
+  width: 64px;
 }
 
 .chat-message {
