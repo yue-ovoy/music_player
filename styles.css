@@ -749,6 +749,11 @@ audio {
   display: none;
 }
 
+.song-menu-main[hidden],
+.song-menu-playlists[hidden] {
+  display: none;
+}
+
 .song-menu-label,
 .song-menu-empty {
   color: var(--muted);
@@ -756,7 +761,9 @@ audio {
   font-weight: 800;
 }
 
-.song-menu-playlists {
+.song-menu-main,
+.song-menu-playlists,
+.song-menu-playlist-list {
   display: grid;
   gap: 4px;
 }

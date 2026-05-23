@@ -722,6 +722,25 @@ async function removeSongFromPlaylists(songId) {
   }
 }
 
+async function removeSongFromPlaylist(song, playlist) {
+  if (!playlist || !playlist.songIds.includes(song.id)) return;
+  if (!confirm(`确定把《${song.title}》从「${playlist.name}」里移除吗？`)) return;
+
+  playlist.songIds = playlist.songIds.filter((id) => id !== song.id);
+
+  if (state.cloud) {
+    await supabaseRest(`playlists?id=eq.${playlist.id}`, {
+      method: "PATCH",
+      headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({ song_ids: playlist.songIds }),
+    });
+  } else {
+    await localPut("playlists", playlist);
+  }
+
+  await loadData();
+}
+
 async function deleteSong(song) {
   if (!confirm(`确定删除《${song.title}》吗？这会从曲库和所有歌单里移除。`)) return;
 
@@ -1028,9 +1047,28 @@ function bindPlaybackButtons(container, getSongs, name, stopSummary = false) {
   });
 }
 
-function renderSongMenu(row, song) {
+function renderSongMenu(row, song, context = {}) {
   const menu = row.querySelector(".song-menu");
-  const playlistList = menu.querySelector(".song-menu-playlists");
+  const mainActions = menu.querySelector(".song-menu-main");
+  const playlistPanel = menu.querySelector(".song-menu-playlists");
+  const playlistList = menu.querySelector(".song-menu-playlist-list");
+  const playlist = context.playlist || null;
+
+  if (playlist) {
+    mainActions.innerHTML = "";
+    const removeButton = document.createElement("button");
+    removeButton.type = "button";
+    removeButton.className = "danger";
+    removeButton.textContent = "删除";
+    removeButton.addEventListener("click", async (event) => {
+      event.stopPropagation();
+      closeSongMenus();
+      await removeSongFromPlaylist(song, playlist);
+    });
+    mainActions.append(removeButton);
+    return;
+  }
+
   playlistList.innerHTML = "";
 
   if (!state.playlists.length) {
@@ -1052,6 +1090,18 @@ function renderSongMenu(row, song) {
     });
   }
 
+  menu.querySelector('[data-action="show-playlists"]').addEventListener("click", (event) => {
+    event.stopPropagation();
+    mainActions.hidden = true;
+    playlistPanel.hidden = false;
+  });
+
+  menu.querySelector('[data-action="back"]').addEventListener("click", (event) => {
+    event.stopPropagation();
+    playlistPanel.hidden = true;
+    mainActions.hidden = false;
+  });
+
   menu.querySelector('[data-action="delete"]').addEventListener("click", (event) => {
     event.stopPropagation();
     closeSongMenus();
@@ -1059,9 +1109,17 @@ function renderSongMenu(row, song) {
   });
 }
 
+function resetSongMenu(row) {
+  const mainActions = row.querySelector(".song-menu-main");
+  const playlistPanel = row.querySelector(".song-menu-playlists");
+  if (mainActions) mainActions.hidden = false;
+  if (playlistPanel) playlistPanel.hidden = true;
+}
+
 function renderSong(song, context = {}) {
   const collectionName = context.collectionName || "共享曲库";
   const getSongs = context.getSongs || (() => state.songs);
+  const isPlaylistSong = Boolean(context.playlist);
   const row = document.createElement("article");
   row.className = "song-row";
   row.dataset.songId = song.id;
@@ -1072,9 +1130,18 @@ function renderSong(song, context = {}) {
     </div>
     <button class="song-menu-button" type="button" data-action="menu" title="更多" aria-label="更多操作">...</button>
     <div class="song-menu" hidden>
-      <div class="song-menu-label">加入歌单</div>
-      <div class="song-menu-playlists"></div>
-      <button class="danger" type="button" data-action="delete">删除</button>
+      <div class="song-menu-main">
+        ${
+          isPlaylistSong
+            ? ""
+            : '<button type="button" data-action="show-playlists">加入歌单</button><button class="danger" type="button" data-action="delete">删除</button>'
+        }
+      </div>
+      <div class="song-menu-playlists" hidden>
+        <button type="button" data-action="back">返回</button>
+        <div class="song-menu-label">选择歌单</div>
+        <div class="song-menu-playlist-list"></div>
+      </div>
     </div>
   `;
   row.querySelector(".song-title-text").textContent = song.title;
@@ -1086,10 +1153,11 @@ function renderSong(song, context = {}) {
     const menu = row.querySelector(".song-menu");
     const shouldOpen = menu.hidden;
     closeSongMenus(menu);
+    resetSongMenu(row);
     menu.hidden = !shouldOpen;
   });
   row.querySelector(".song-menu").addEventListener("click", (event) => event.stopPropagation());
-  renderSongMenu(row, song);
+  renderSongMenu(row, song, context);
   updateSongRow(row);
 
   return row;
@@ -1126,6 +1194,7 @@ function renderPlaylist(playlist) {
     const item = renderSong(song, {
       collectionName: playlist.name,
       getSongs: () => songs,
+      playlist,
     });
     list.append(item);
   });
