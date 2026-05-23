@@ -417,6 +417,7 @@ function showLibraryPage() {
 function showAppView(view) {
   state.activeView = view;
   state.chatOpen = view === "chat";
+  document.body.classList.toggle("chat-view", view === "chat");
   els.workspace.hidden = view !== "main";
   els.uploadPage.hidden = view !== "upload";
   els.chatPanel.hidden = view !== "chat";
@@ -787,7 +788,7 @@ function playRecommendedSong(songId) {
 
 function focusChatInput() {
   requestAnimationFrame(() => {
-    els.chatForm.scrollIntoView({ block: "end", behavior: "smooth" });
+    els.chatList.scrollTop = els.chatList.scrollHeight;
     els.chatInput.focus({ preventScroll: true });
   });
 }

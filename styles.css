@@ -27,6 +27,10 @@ body {
     linear-gradient(120deg, #fff0dc, #fffaf2 46%, #f7efe5);
 }
 
+body.chat-view {
+  overflow: hidden;
+}
+
 button,
 input {
   font: inherit;
@@ -88,6 +92,27 @@ input {
   padding: 16px;
 }
 
+body.chat-view .shell {
+  width: min(760px, 100%);
+  height: 100dvh;
+  padding: 0;
+  display: grid;
+}
+
+body.chat-view .intro {
+  display: none;
+}
+
+body.chat-view .chat-panel {
+  height: 100dvh;
+  min-height: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  padding: max(12px, env(safe-area-inset-top)) 14px max(12px, env(safe-area-inset-bottom));
+  box-shadow: none;
+}
+
 .chat-list {
   min-height: 0;
   max-height: none;
@@ -96,6 +121,8 @@ input {
   gap: 12px;
   overflow: auto;
   padding: 4px 2px 12px;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .chat-topbar {
@@ -244,6 +271,7 @@ input {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
   margin-top: 12px;
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 .chat-form input {
