@@ -693,6 +693,12 @@ function renderChatTitle() {
   els.chatTitle.textContent = otherProfileName();
 }
 
+function shouldShowMessageTime(message, previousMessage) {
+  if (!previousMessage) return true;
+  const gap = new Date(message.createdAt).getTime() - new Date(previousMessage.createdAt).getTime();
+  return gap > 10 * 60 * 1000;
+}
+
 function renderChat() {
   if (!els.chatList) return;
   renderChatTitle();
@@ -711,7 +717,7 @@ function renderChat() {
     return;
   }
 
-  state.messages.forEach((message) => {
+  state.messages.forEach((message, index) => {
     const isMine = message.senderId === state.currentProfileId;
     const content = parseMessageBody(message.body);
     const profile =
@@ -729,7 +735,12 @@ function renderChat() {
       </div>
     `;
     item.querySelector(".chat-avatar").src = profile.avatarUrl || avatarDataUrl(profile.displayName);
-    item.querySelector(".chat-time").textContent = fmtChatTime(message.createdAt);
+    const time = item.querySelector(".chat-time");
+    if (shouldShowMessageTime(message, state.messages[index - 1])) {
+      time.textContent = fmtChatTime(message.createdAt);
+    } else {
+      time.remove();
+    }
     const bubble = item.querySelector(".chat-bubble");
     if (content.type === "song-recommendation") {
       bubble.classList.add("music-card");
