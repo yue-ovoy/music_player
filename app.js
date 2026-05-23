@@ -17,6 +17,7 @@ const state = {
   cloud: false,
   chatOpen: false,
   chatReady: true,
+  activeView: "main",
 };
 
 let deferredInstallPrompt = null;
@@ -387,15 +388,21 @@ async function saveProfile() {
 }
 
 function showUploadPage() {
-  els.workspace.hidden = true;
-  els.uploadPage.hidden = false;
+  showAppView("upload");
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function showLibraryPage() {
-  els.uploadPage.hidden = true;
-  els.workspace.hidden = false;
+  showAppView("main");
   window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function showAppView(view) {
+  state.activeView = view;
+  state.chatOpen = view === "chat";
+  els.workspace.hidden = view !== "main";
+  els.uploadPage.hidden = view !== "upload";
+  els.chatPanel.hidden = view !== "chat";
 }
 
 async function forceAppUpdate() {
@@ -684,16 +691,16 @@ function renderChat() {
 }
 
 async function openChat() {
-  state.chatOpen = true;
-  els.chatPanel.hidden = false;
+  showAppView("chat");
   els.chatInput.focus();
   await loadMessages({ markRead: true });
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 async function closeChat() {
-  state.chatOpen = false;
-  els.chatPanel.hidden = true;
+  showAppView("main");
   renderMessageBadge();
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function startMessagePolling() {

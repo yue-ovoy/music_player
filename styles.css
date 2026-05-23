@@ -80,17 +80,33 @@ input {
 }
 
 .chat-panel {
-  width: min(620px, 100%);
-  margin: 0 0 18px auto;
+  min-height: calc(100vh - 128px);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  width: 100%;
+  margin: 0 0 18px;
   padding: 16px;
 }
 
 .chat-list {
-  max-height: min(58vh, 520px);
+  min-height: 0;
+  max-height: none;
   display: grid;
+  align-content: end;
   gap: 12px;
   overflow: auto;
   padding: 4px 2px 12px;
+}
+
+.chat-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  margin: -16px -16px 14px;
+  padding: 16px;
+  border-bottom: 1px solid rgba(68, 49, 39, 0.08);
+  background: rgba(255, 250, 242, 0.88);
+  backdrop-filter: blur(16px);
 }
 
 .chat-message {
