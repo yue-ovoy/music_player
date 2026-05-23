@@ -34,9 +34,33 @@ create table if not exists public.messages (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.posts (
+  id uuid primary key,
+  room_code text not null,
+  author_id text not null,
+  author_name text not null,
+  body text not null default '',
+  image_url text,
+  image_path text,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.post_comments (
+  id uuid primary key,
+  post_id uuid not null references public.posts(id) on delete cascade,
+  room_code text not null,
+  author_id text not null,
+  author_name text not null,
+  body text not null,
+  created_at timestamptz not null default now()
+);
+
 create index if not exists songs_room_code_idx on public.songs (room_code, created_at desc);
 create index if not exists playlists_room_code_idx on public.playlists (room_code, created_at desc);
 create index if not exists messages_room_code_idx on public.messages (room_code, created_at asc);
+create index if not exists posts_room_code_idx on public.posts (room_code, created_at desc);
+create index if not exists post_comments_room_code_idx on public.post_comments (room_code, created_at asc);
+create index if not exists post_comments_post_id_idx on public.post_comments (post_id, created_at asc);
 
 alter table public.songs add column if not exists artist text;
 
@@ -44,6 +68,8 @@ alter table public.songs enable row level security;
 alter table public.playlists enable row level security;
 alter table public.profiles enable row level security;
 alter table public.messages enable row level security;
+alter table public.posts enable row level security;
+alter table public.post_comments enable row level security;
 
 drop policy if exists "Anyone can read songs by room code" on public.songs;
 create policy "Anyone can read songs by room code"
@@ -113,6 +139,26 @@ on public.messages for update
 using (true)
 with check (true);
 
+drop policy if exists "Anyone can read posts" on public.posts;
+create policy "Anyone can read posts"
+on public.posts for select
+using (true);
+
+drop policy if exists "Anyone can add posts" on public.posts;
+create policy "Anyone can add posts"
+on public.posts for insert
+with check (true);
+
+drop policy if exists "Anyone can read post comments" on public.post_comments;
+create policy "Anyone can read post comments"
+on public.post_comments for select
+using (true);
+
+drop policy if exists "Anyone can add post comments" on public.post_comments;
+create policy "Anyone can add post comments"
+on public.post_comments for insert
+with check (true);
+
 insert into public.profiles (id, display_name)
 values ('shuishui', '水水'), ('zhi', '知')
 on conflict (id) do nothing;
@@ -123,6 +169,10 @@ on conflict (id) do update set public = true;
 
 insert into storage.buckets (id, name, public)
 values ('avatars', 'avatars', true)
+on conflict (id) do update set public = true;
+
+insert into storage.buckets (id, name, public)
+values ('post-images', 'post-images', true)
 on conflict (id) do update set public = true;
 
 drop policy if exists "Anyone can upload songs" on storage.objects;
@@ -155,3 +205,13 @@ drop policy if exists "Anyone can read avatars" on storage.objects;
 create policy "Anyone can read avatars"
 on storage.objects for select
 using (bucket_id = 'avatars');
+
+drop policy if exists "Anyone can upload post images" on storage.objects;
+create policy "Anyone can upload post images"
+on storage.objects for insert
+with check (bucket_id = 'post-images');
+
+drop policy if exists "Anyone can read post images" on storage.objects;
+create policy "Anyone can read post images"
+on storage.objects for select
+using (bucket_id = 'post-images');

@@ -10,6 +10,8 @@ const state = {
   playlists: [],
   profiles: [],
   messages: [],
+  posts: [],
+  postComments: [],
   currentSong: null,
   playQueue: null,
   playMode: localStorage.getItem("playMode") || "order",
@@ -21,6 +23,7 @@ const state = {
   cloud: false,
   chatOpen: false,
   chatReady: true,
+  postsReady: true,
   activeView: "main",
 };
 
@@ -29,6 +32,7 @@ let messagePollTimer = null;
 
 const els = {
   forceUpdateButton: document.querySelector("#force-update-button"),
+  postsButton: document.querySelector("#posts-button"),
   messageButton: document.querySelector("#message-button"),
   messageBadge: document.querySelector("#message-badge"),
   installAppButton: document.querySelector("#install-app-button"),
@@ -58,6 +62,15 @@ const els = {
   chatInput: document.querySelector("#chat-input"),
   sendMessageButton: document.querySelector("#send-message-button"),
   chatStatus: document.querySelector("#chat-status"),
+  postsPanel: document.querySelector("#posts-panel"),
+  closePostsButton: document.querySelector("#close-posts-button"),
+  postForm: document.querySelector("#post-form"),
+  postBody: document.querySelector("#post-body"),
+  postImageFile: document.querySelector("#post-image-file"),
+  postImageName: document.querySelector("#post-image-name"),
+  publishPostButton: document.querySelector("#publish-post-button"),
+  postStatus: document.querySelector("#post-status"),
+  postList: document.querySelector("#post-list"),
   workspace: document.querySelector(".workspace"),
   uploadPage: document.querySelector("#upload-page"),
   openUploadButton: document.querySelector("#open-upload-button"),
@@ -172,6 +185,16 @@ function currentProfile() {
   return state.profiles.find((profile) => profile.id === state.currentProfileId) || state.profiles[0] || fallbackProfiles()[0];
 }
 
+function profileForId(id, fallbackName = "") {
+  return (
+    state.profiles.find((profile) => profile.id === id) || {
+      id,
+      displayName: fallbackName || "她",
+      avatarUrl: "",
+    }
+  );
+}
+
 function favoritePlaylistName(profileId = state.currentProfileId) {
   return (favoritePlaylists[profileId] || favoritePlaylists.shuishui).name;
 }
@@ -250,6 +273,7 @@ function selectProfile(id) {
   resetAvatarCrop();
   renderProfile();
   loadMessages();
+  if (state.activeView === "posts") loadPosts();
 }
 
 function cropFrameSize() {
@@ -363,6 +387,41 @@ function blobToDataUrl(blob) {
   });
 }
 
+function loadImageFromFile(file) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    const reader = new FileReader();
+    reader.onload = () => {
+      image.onload = () => resolve(image);
+      image.onerror = () => reject(new Error("图片读取失败，可以换一张试试。"));
+      image.src = reader.result;
+    };
+    reader.onerror = () => reject(new Error("图片读取失败，可以换一张试试。"));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function compressPostImage(file) {
+  if (!file) return null;
+  const image = await loadImageFromFile(file);
+  const maxSide = 1400;
+  const ratio = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
+  const width = Math.max(1, Math.round(image.naturalWidth * ratio));
+  const height = Math.max(1, Math.round(image.naturalHeight * ratio));
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#fff8ef";
+  ctx.fillRect(0, 0, width, height);
+  ctx.drawImage(image, 0, 0, width, height);
+
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.82);
+  });
+}
+
 async function uploadAvatar(file, profileId) {
   const path = `${profileId}-${Date.now()}.jpg`;
   await uploadToSupabaseStorage("avatars", path, file, () => {}, true);
@@ -418,9 +477,11 @@ function showAppView(view) {
   state.activeView = view;
   state.chatOpen = view === "chat";
   document.body.classList.toggle("chat-view", view === "chat");
+  document.body.classList.toggle("posts-view", view === "posts");
   els.workspace.hidden = view !== "main";
   els.uploadPage.hidden = view !== "upload";
   els.chatPanel.hidden = view !== "chat";
+  els.postsPanel.hidden = view !== "posts";
 }
 
 async function forceAppUpdate() {
@@ -815,6 +876,242 @@ async function openChat() {
 async function closeChat() {
   showAppView("main");
   renderMessageBadge();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function commentsForPost(postId) {
+  return state.postComments.filter((comment) => comment.postId === postId);
+}
+
+async function loadPosts() {
+  if (!state.cloud) {
+    state.posts = [];
+    state.postComments = [];
+    state.postsReady = false;
+    renderPosts();
+    return;
+  }
+
+  try {
+    const [posts, comments] = await Promise.all([
+      supabaseRest(`posts?select=*&room_code=eq.${encodeURIComponent(state.room)}&order=created_at.desc&limit=80`),
+      supabaseRest(`post_comments?select=*&room_code=eq.${encodeURIComponent(state.room)}&order=created_at.asc&limit=500`),
+    ]);
+
+    state.posts = posts.map((post) => ({
+      id: post.id,
+      room: post.room_code,
+      authorId: post.author_id,
+      authorName: post.author_name,
+      body: post.body || "",
+      imageUrl: post.image_url || "",
+      imagePath: post.image_path || "",
+      createdAt: post.created_at,
+    }));
+    state.postComments = comments.map((comment) => ({
+      id: comment.id,
+      postId: comment.post_id,
+      room: comment.room_code,
+      authorId: comment.author_id,
+      authorName: comment.author_name,
+      body: comment.body,
+      createdAt: comment.created_at,
+    }));
+    state.postsReady = true;
+  } catch (error) {
+    console.warn("Posts are not ready yet", error);
+    state.posts = [];
+    state.postComments = [];
+    state.postsReady = false;
+  }
+
+  renderPosts();
+}
+
+async function uploadPostImage(file) {
+  const blob = await compressPostImage(file);
+  if (!blob) return { imageUrl: "", imagePath: "" };
+
+  const path = `${storageSafeSegment(state.room)}/${uid()}.jpg`;
+  await uploadToSupabaseStorage("post-images", path, blob, () => {});
+  return {
+    imageUrl: `${state.supabaseUrl}/storage/v1/object/public/post-images/${encodeStoragePath(path)}`,
+    imagePath: path,
+  };
+}
+
+async function createPost() {
+  const body = els.postBody.value.trim();
+  const imageFile = els.postImageFile.files[0] || null;
+  if (!body && !imageFile) return;
+  if (!state.cloud) {
+    els.postStatus.textContent = "动态需要云端模式。";
+    return;
+  }
+
+  const profile = currentProfile();
+  els.publishPostButton.disabled = true;
+  els.publishPostButton.textContent = imageFile ? "压缩中..." : "发布中...";
+  els.postStatus.textContent = imageFile ? "正在压缩图片..." : "";
+
+  try {
+    const image = imageFile ? await uploadPostImage(imageFile) : { imageUrl: "", imagePath: "" };
+    els.postStatus.textContent = "正在发布...";
+    await supabaseRest("posts", {
+      method: "POST",
+      headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({
+        id: uid(),
+        room_code: state.room,
+        author_id: profile.id,
+        author_name: profile.displayName,
+        body,
+        image_url: image.imageUrl,
+        image_path: image.imagePath,
+      }),
+    });
+
+    els.postBody.value = "";
+    els.postImageFile.value = "";
+    els.postImageName.textContent = "";
+    els.postStatus.textContent = "";
+    await loadPosts();
+  } catch (error) {
+    els.postStatus.textContent = `发布失败：${error.message}`;
+    console.error(error);
+  } finally {
+    els.publishPostButton.disabled = false;
+    els.publishPostButton.textContent = "发布";
+  }
+}
+
+async function createPostComment(postId, input, button) {
+  const body = input.value.trim();
+  if (!body || !state.cloud) return;
+  const profile = currentProfile();
+
+  button.disabled = true;
+  try {
+    await supabaseRest("post_comments", {
+      method: "POST",
+      headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({
+        id: uid(),
+        post_id: postId,
+        room_code: state.room,
+        author_id: profile.id,
+        author_name: profile.displayName,
+        body,
+      }),
+    });
+    input.value = "";
+    await loadPosts();
+  } catch (error) {
+    els.postStatus.textContent = `评论失败：${error.message}`;
+    console.error(error);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function renderPostCard(post) {
+  const profile = profileForId(post.authorId, post.authorName);
+  const card = document.createElement("article");
+  card.className = "post-card";
+  card.innerHTML = `
+    <div class="post-author">
+      <img alt="" />
+      <div>
+        <strong></strong>
+        <span></span>
+      </div>
+    </div>
+    <p class="post-text"></p>
+    <img class="post-image" alt="" hidden />
+    <div class="comment-list"></div>
+    <form class="comment-form">
+      <input type="text" maxlength="300" placeholder="写评论" />
+      <button class="secondary-button compact" type="submit">发送</button>
+    </form>
+  `;
+
+  card.querySelector(".post-author img").src = profile.avatarUrl || avatarDataUrl(profile.displayName);
+  card.querySelector(".post-author strong").textContent = profile.displayName;
+  card.querySelector(".post-author span").textContent = fmtChatTime(post.createdAt);
+
+  const text = card.querySelector(".post-text");
+  text.textContent = post.body;
+  if (!post.body) text.hidden = true;
+
+  const image = card.querySelector(".post-image");
+  if (post.imageUrl) {
+    image.src = post.imageUrl;
+    image.hidden = false;
+  }
+
+  const commentList = card.querySelector(".comment-list");
+  const comments = commentsForPost(post.id);
+  if (!comments.length) {
+    commentList.hidden = true;
+  } else {
+    comments.forEach((comment) => {
+      const commentProfile = profileForId(comment.authorId, comment.authorName);
+      const row = document.createElement("div");
+      row.className = "comment-row";
+      row.innerHTML = `
+        <img alt="" />
+        <div>
+          <strong></strong>
+          <p class="comment-text"></p>
+        </div>
+      `;
+      row.querySelector("img").src = commentProfile.avatarUrl || avatarDataUrl(commentProfile.displayName);
+      row.querySelector("strong").textContent = commentProfile.displayName;
+      row.querySelector(".comment-text").textContent = comment.body;
+      commentList.append(row);
+    });
+  }
+
+  const form = card.querySelector(".comment-form");
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    createPostComment(post.id, form.querySelector("input"), form.querySelector("button"));
+  });
+
+  return card;
+}
+
+function renderPosts() {
+  if (!els.postList) return;
+
+  if (!state.postsReady) {
+    els.postList.innerHTML = '<div class="chat-empty">动态还没配置好。先在 Supabase 里重新运行 SQL。</div>';
+    els.postStatus.textContent = state.cloud ? "等待 posts 表。" : "动态需要云端模式。";
+    return;
+  }
+
+  els.postStatus.textContent = "";
+  els.postList.innerHTML = "";
+
+  if (!state.posts.length) {
+    els.postList.innerHTML = '<div class="chat-empty">还没有小记。</div>';
+    return;
+  }
+
+  state.posts.forEach((post) => els.postList.append(renderPostCard(post)));
+}
+
+async function openPosts() {
+  showAppView("posts");
+  await loadPosts();
+  requestAnimationFrame(() => {
+    els.postList.scrollTop = 0;
+    els.postBody.focus({ preventScroll: true });
+  });
+}
+
+function closePosts() {
+  showAppView("main");
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
@@ -1742,8 +2039,18 @@ function bindEvents() {
     cropState.dragging = false;
   });
   els.saveProfileButton.addEventListener("click", saveProfile);
+  els.postsButton.addEventListener("click", openPosts);
   els.messageButton.addEventListener("click", openChat);
   els.closeChatButton.addEventListener("click", closeChat);
+  els.closePostsButton.addEventListener("click", closePosts);
+  els.postImageFile.addEventListener("change", () => {
+    const file = els.postImageFile.files[0];
+    els.postImageName.textContent = file ? file.name : "";
+  });
+  els.postForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    await createPost();
+  });
   els.chatForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     const text = els.chatInput.value;

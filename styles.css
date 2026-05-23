@@ -27,12 +27,14 @@ body {
     linear-gradient(120deg, #fff0dc, #fffaf2 46%, #f7efe5);
 }
 
-body.chat-view {
+body.chat-view,
+body.posts-view {
   overflow: hidden;
 }
 
 button,
-input {
+input,
+textarea {
   font: inherit;
 }
 
@@ -79,11 +81,13 @@ input {
 }
 
 .profile-panel[hidden],
-.chat-panel[hidden] {
+.chat-panel[hidden],
+.posts-panel[hidden] {
   display: none;
 }
 
-.chat-panel {
+.chat-panel,
+.posts-panel {
   min-height: calc(100vh - 128px);
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto auto;
@@ -92,18 +96,21 @@ input {
   padding: 16px;
 }
 
-body.chat-view .shell {
+body.chat-view .shell,
+body.posts-view .shell {
   width: min(760px, 100%);
   height: 100dvh;
   padding: 0;
   display: grid;
 }
 
-body.chat-view .intro {
+body.chat-view .intro,
+body.posts-view .intro {
   display: none;
 }
 
-body.chat-view .chat-panel {
+body.chat-view .chat-panel,
+body.posts-view .posts-panel {
   height: 100dvh;
   min-height: 0;
   margin: 0;
@@ -300,6 +307,155 @@ body.chat-view .chat-panel {
   margin: 8px 0 0;
 }
 
+.posts-panel {
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+}
+
+.post-form {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.post-form textarea {
+  width: 100%;
+  min-height: 88px;
+  resize: vertical;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: #fffdf8;
+  color: var(--ink);
+  outline: none;
+  line-height: 1.5;
+}
+
+.post-form textarea:focus {
+  border-color: var(--rose);
+  box-shadow: 0 0 0 3px rgba(201, 81, 105, 0.14);
+}
+
+.post-image-picker {
+  min-height: 42px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  border: 1px dashed rgba(201, 81, 105, 0.36);
+  border-radius: 8px;
+  padding: 0 12px;
+  background: rgba(255, 250, 242, 0.72);
+  color: var(--rose-dark);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.post-image-picker input {
+  display: none;
+}
+
+.post-image-picker strong {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.82rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.post-list {
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  overflow: auto;
+  padding: 4px 2px 12px;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.post-card {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: rgba(255, 253, 248, 0.9);
+}
+
+.post-author,
+.comment-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 9px;
+  align-items: start;
+}
+
+.post-author img,
+.comment-row img {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.post-author strong,
+.comment-row strong {
+  display: block;
+  color: var(--ink);
+  font-size: 0.92rem;
+}
+
+.post-author span,
+.post-status {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.post-text,
+.comment-text {
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  line-height: 1.55;
+  font-weight: 700;
+}
+
+.post-image {
+  width: 100%;
+  max-height: 520px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.comment-list {
+  display: grid;
+  gap: 9px;
+  border-top: 1px solid rgba(68, 49, 39, 0.08);
+  padding-top: 10px;
+}
+
+.comment-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.comment-form input {
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 10px;
+  background: #fffdf8;
+  color: var(--ink);
+  outline: none;
+}
+
+.comment-form input:focus {
+  border-color: var(--rose);
+  box-shadow: 0 0 0 3px rgba(201, 81, 105, 0.14);
+}
+
 .profile-hint {
   margin: 0 0 12px;
   color: var(--rose-dark);
@@ -450,6 +606,7 @@ h1 {
 }
 
 .update-button,
+.story-button,
 .message-button {
   position: relative;
   width: 40px;
@@ -464,7 +621,8 @@ h1 {
   cursor: pointer;
 }
 
-.message-button svg {
+.message-button svg,
+.story-button svg {
   width: 20px;
   height: 20px;
   fill: none;
