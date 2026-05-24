@@ -207,6 +207,12 @@ create policy "Anyone can read uploaded songs"
 on storage.objects for select
 using (bucket_id = 'songs');
 
+drop policy if exists "Anyone can update uploaded songs" on storage.objects;
+create policy "Anyone can update uploaded songs"
+on storage.objects for update
+using (bucket_id = 'songs')
+with check (bucket_id = 'songs');
+
 drop policy if exists "Anyone can delete uploaded songs" on storage.objects;
 create policy "Anyone can delete uploaded songs"
 on storage.objects for delete

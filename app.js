@@ -1443,7 +1443,7 @@ async function uploadAudioForSong(song, file, onProgress = () => {}) {
 
   if (state.cloud) {
     const path = `${storageSafeSegment(state.room)}/${song.id}.${fileExtension(file.name)}`;
-    await uploadToSupabaseStorage("songs", path, file, onProgress, true);
+    await uploadToSupabaseStorage("songs", path, file, onProgress);
     const publicUrl = `${state.supabaseUrl}/storage/v1/object/public/songs/${encodeStoragePath(path)}`;
     await supabaseRest(`songs?id=eq.${song.id}`, {
       method: "PATCH",
