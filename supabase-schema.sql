@@ -60,14 +60,15 @@ create index if not exists songs_room_code_idx on public.songs (room_code, creat
 create index if not exists playlists_room_code_idx on public.playlists (room_code, created_at desc);
 create index if not exists messages_room_code_idx on public.messages (room_code, created_at asc);
 create index if not exists posts_room_code_idx on public.posts (room_code, created_at desc);
-create index if not exists post_comments_room_code_idx on public.post_comments (room_code, created_at asc);
-create index if not exists post_comments_post_id_idx on public.post_comments (post_id, created_at asc);
-create index if not exists post_comments_parent_comment_id_idx on public.post_comments (parent_comment_id, created_at asc);
 
 alter table public.songs add column if not exists artist text;
 alter table public.songs alter column storage_path drop not null;
 alter table public.songs alter column public_url drop not null;
 alter table public.post_comments add column if not exists parent_comment_id uuid references public.post_comments(id) on delete cascade;
+
+create index if not exists post_comments_room_code_idx on public.post_comments (room_code, created_at asc);
+create index if not exists post_comments_post_id_idx on public.post_comments (post_id, created_at asc);
+create index if not exists post_comments_parent_comment_id_idx on public.post_comments (parent_comment_id, created_at asc);
 
 alter table public.songs enable row level security;
 alter table public.playlists enable row level security;
