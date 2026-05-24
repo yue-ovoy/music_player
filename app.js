@@ -1017,6 +1017,39 @@ async function createPostComment(postId, input, button) {
   }
 }
 
+async function deletePost(post) {
+  if (post.authorId !== state.currentProfileId) return;
+  if (!confirm("确定删除这条小记吗？评论也会一起删除。")) return;
+
+  try {
+    if (post.imagePath) await deleteSupabaseStorage(post.imagePath, "post-images");
+    await supabaseRest(`posts?id=eq.${post.id}`, {
+      method: "DELETE",
+      headers: { Prefer: "return=minimal" },
+    });
+    await loadPosts();
+  } catch (error) {
+    els.postStatus.textContent = `删除失败：${error.message}`;
+    console.error(error);
+  }
+}
+
+async function deletePostComment(comment) {
+  if (comment.authorId !== state.currentProfileId) return;
+  if (!confirm("确定删除这条评论吗？")) return;
+
+  try {
+    await supabaseRest(`post_comments?id=eq.${comment.id}`, {
+      method: "DELETE",
+      headers: { Prefer: "return=minimal" },
+    });
+    await loadPosts();
+  } catch (error) {
+    els.postStatus.textContent = `删除评论失败：${error.message}`;
+    console.error(error);
+  }
+}
+
 function renderPostCard(post) {
   const profile = profileForId(post.authorId, post.authorName);
   const card = document.createElement("article");
@@ -1028,6 +1061,7 @@ function renderPostCard(post) {
         <strong></strong>
         <span></span>
       </div>
+      <button class="post-delete-button" type="button" hidden>删除</button>
     </div>
     <p class="post-text"></p>
     <img class="post-image" alt="" hidden />
@@ -1041,6 +1075,11 @@ function renderPostCard(post) {
   card.querySelector(".post-author img").src = profile.avatarUrl || avatarDataUrl(profile.displayName);
   card.querySelector(".post-author strong").textContent = profile.displayName;
   card.querySelector(".post-author span").textContent = fmtChatTime(post.createdAt);
+  const deleteButton = card.querySelector(".post-delete-button");
+  if (post.authorId === state.currentProfileId) {
+    deleteButton.hidden = false;
+    deleteButton.addEventListener("click", () => deletePost(post));
+  }
 
   const text = card.querySelector(".post-text");
   text.textContent = post.body;
@@ -1068,10 +1107,16 @@ function renderPostCard(post) {
           <strong></strong>
           <p class="comment-text"></p>
         </div>
+        <button class="comment-delete-button" type="button" hidden>删除</button>
       `;
       row.querySelector("img").src = commentProfile.avatarUrl || avatarDataUrl(commentProfile.displayName);
       row.querySelector("strong").textContent = commentProfile.displayName;
       row.querySelector(".comment-text").textContent = comment.body;
+      const commentDeleteButton = row.querySelector(".comment-delete-button");
+      if (comment.authorId === state.currentProfileId) {
+        commentDeleteButton.hidden = false;
+        commentDeleteButton.addEventListener("click", () => deletePostComment(comment));
+      }
       commentList.append(row);
     });
   }
@@ -1233,8 +1278,8 @@ function uploadToSupabaseStorage(bucket, path, file, onProgress, upsert = false)
   });
 }
 
-async function deleteSupabaseStorage(path) {
-  const response = await fetch(`${state.supabaseUrl}/storage/v1/object/songs/${encodeStoragePath(path)}`, {
+async function deleteSupabaseStorage(path, bucket = "songs") {
+  const response = await fetch(`${state.supabaseUrl}/storage/v1/object/${bucket}/${encodeStoragePath(path)}`, {
     method: "DELETE",
     headers: {
       apikey: state.supabaseAnonKey,

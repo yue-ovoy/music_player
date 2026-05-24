@@ -436,7 +436,7 @@ body.posts-view .posts-panel {
 .post-author,
 .comment-row {
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr);
+  grid-template-columns: 34px minmax(0, 1fr) auto;
   gap: 9px;
   align-items: start;
 }
@@ -463,6 +463,23 @@ body.posts-view .posts-panel {
   font-weight: 800;
 }
 
+.post-delete-button,
+.comment-delete-button {
+  border: 0;
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: rgba(157, 49, 72, 0.1);
+  color: var(--rose-dark);
+  font-size: 0.74rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.post-delete-button[hidden],
+.comment-delete-button[hidden] {
+  display: none;
+}
+
 .post-text,
 .comment-text {
   margin: 0;
@@ -473,10 +490,10 @@ body.posts-view .posts-panel {
 }
 
 .post-image {
-  width: auto;
-  max-width: 100%;
+  width: 66%;
+  max-width: 66%;
   max-height: 240px;
-  justify-self: center;
+  justify-self: start;
   border-radius: 8px;
   object-fit: contain;
   cursor: zoom-in;

@@ -149,6 +149,11 @@ create policy "Anyone can add posts"
 on public.posts for insert
 with check (true);
 
+drop policy if exists "Anyone can delete posts" on public.posts;
+create policy "Anyone can delete posts"
+on public.posts for delete
+using (true);
+
 drop policy if exists "Anyone can read post comments" on public.post_comments;
 create policy "Anyone can read post comments"
 on public.post_comments for select
@@ -158,6 +163,11 @@ drop policy if exists "Anyone can add post comments" on public.post_comments;
 create policy "Anyone can add post comments"
 on public.post_comments for insert
 with check (true);
+
+drop policy if exists "Anyone can delete post comments" on public.post_comments;
+create policy "Anyone can delete post comments"
+on public.post_comments for delete
+using (true);
 
 insert into public.profiles (id, display_name)
 values ('shuishui', '水水'), ('zhi', '知')
@@ -214,4 +224,9 @@ with check (bucket_id = 'post-images');
 drop policy if exists "Anyone can read post images" on storage.objects;
 create policy "Anyone can read post images"
 on storage.objects for select
+using (bucket_id = 'post-images');
+
+drop policy if exists "Anyone can delete post images" on storage.objects;
+create policy "Anyone can delete post images"
+on storage.objects for delete
 using (bucket_id = 'post-images');
