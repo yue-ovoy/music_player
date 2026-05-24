@@ -10,9 +10,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.jpg" />
-    <link rel="stylesheet" href="./styles.css?v=20260524-comment-replies" />
+    <link rel="stylesheet" href="./styles.css?v=20260524-add-songs" />
     <script src="./config.js"></script>
-    <script type="module" src="./app.js?v=20260524-comment-replies"></script>
+    <script type="module" src="./app.js?v=20260524-add-songs"></script>
   </head>
   <body>
     <main class="shell">
@@ -187,7 +187,7 @@
               </div>
               <div class="library-actions">
                 <div class="playback-actions" id="library-playback-actions" aria-label="曲库播放控制"></div>
-                <button class="secondary-button compact" id="open-upload-button" type="button">上传歌曲</button>
+                <button class="secondary-button compact" id="open-upload-button" type="button">添加歌曲</button>
               </div>
             </div>
             <div class="song-list" id="song-list"></div>
@@ -205,9 +205,14 @@
 
       <section class="panel upload-page" id="upload-page" hidden>
         <div class="section-bar">
-          <h3>上传歌曲</h3>
+          <h3>添加歌曲</h3>
           <button class="ghost-button" id="back-to-library-button" type="button">返回曲库</button>
         </div>
+
+        <label class="field">
+          <span>歌曲名</span>
+          <input id="song-title-input" type="text" maxlength="120" placeholder="比如 修炼爱情" />
+        </label>
 
         <label class="field">
           <span>歌手</span>
@@ -216,12 +221,12 @@
 
         <form class="upload-card" id="upload-form">
           <label class="dropzone" for="music-file">
-            <input id="music-file" type="file" accept="audio/*,.wav,.mp3,.m4a,.flac" multiple />
+            <input id="music-file" type="file" accept="audio/*,.wav,.mp3,.m4a,.flac" />
             <strong>选择音乐文件</strong>
             <span>支持 wav / mp3 / m4a / flac</span>
           </label>
           <div class="selected-files" id="selected-files" aria-live="polite"></div>
-          <button class="primary-button" type="submit">上传到曲库</button>
+          <button class="primary-button" type="submit">添加到曲库</button>
         </form>
 
         <div class="mode-note" id="mode-note">

@@ -4,8 +4,8 @@ create table if not exists public.songs (
   title text not null,
   artist text,
   uploader_name text not null default '匿名',
-  storage_path text not null,
-  public_url text not null,
+  storage_path text,
+  public_url text,
   created_at timestamptz not null default now()
 );
 
@@ -65,6 +65,8 @@ create index if not exists post_comments_post_id_idx on public.post_comments (po
 create index if not exists post_comments_parent_comment_id_idx on public.post_comments (parent_comment_id, created_at asc);
 
 alter table public.songs add column if not exists artist text;
+alter table public.songs alter column storage_path drop not null;
+alter table public.songs alter column public_url drop not null;
 alter table public.post_comments add column if not exists parent_comment_id uuid references public.post_comments(id) on delete cascade;
 
 alter table public.songs enable row level security;

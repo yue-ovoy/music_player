@@ -1259,6 +1259,17 @@ audio {
   cursor: pointer;
 }
 
+.song-row.is-missing-audio {
+  background: rgba(230, 226, 218, 0.62);
+  color: rgba(37, 33, 29, 0.58);
+  cursor: default;
+}
+
+.song-row.is-missing-audio .song-title-text,
+.song-row.is-missing-audio .song-meta {
+  color: inherit;
+}
+
 .song-row.is-current {
   border-color: rgba(201, 81, 105, 0.36);
   background: rgba(201, 81, 105, 0.09);
@@ -1286,6 +1297,10 @@ audio {
 .song-meta {
   color: var(--muted);
   font-size: 0.85rem;
+}
+
+.upload-audio-button {
+  margin-top: 9px;
 }
 
 .song-menu-button {

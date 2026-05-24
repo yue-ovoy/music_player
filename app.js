@@ -29,6 +29,7 @@ const state = {
 
 let deferredInstallPrompt = null;
 let messagePollTimer = null;
+let pendingAudioSongId = "";
 
 const els = {
   forceUpdateButton: document.querySelector("#force-update-button"),
@@ -82,6 +83,7 @@ const els = {
   uploadPage: document.querySelector("#upload-page"),
   openUploadButton: document.querySelector("#open-upload-button"),
   backToLibraryButton: document.querySelector("#back-to-library-button"),
+  songTitleInput: document.querySelector("#song-title-input"),
   artistName: document.querySelector("#artist-name"),
   uploadForm: document.querySelector("#upload-form"),
   musicFile: document.querySelector("#music-file"),
@@ -473,11 +475,35 @@ async function saveProfile() {
 }
 
 function showUploadPage() {
+  pendingAudioSongId = "";
+  els.songTitleInput.value = "";
+  els.songTitleInput.disabled = false;
+  els.artistName.value = state.artist;
+  els.artistName.disabled = false;
+  els.musicFile.value = "";
+  renderSelectedFiles([]);
+  els.uploadButton.textContent = "添加到曲库";
+  showAppView("upload");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function showAudioUploadForSong(song) {
+  pendingAudioSongId = song.id;
+  els.songTitleInput.value = song.title;
+  els.songTitleInput.disabled = true;
+  els.artistName.value = song.artist || state.artist;
+  els.artistName.disabled = true;
+  els.musicFile.value = "";
+  renderSelectedFiles([]);
+  els.uploadButton.textContent = "上传歌曲";
   showAppView("upload");
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function showLibraryPage() {
+  pendingAudioSongId = "";
+  els.songTitleInput.disabled = false;
+  els.artistName.disabled = false;
   showAppView("main");
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -1277,8 +1303,8 @@ async function loadData(options = {}) {
       title: song.title,
       artist: song.artist || "",
       createdAt: song.created_at,
-      url: song.public_url,
-      storagePath: song.storage_path,
+      url: song.public_url || "",
+      storagePath: song.storage_path || "",
     }));
     state.playlists = playlistsResult.map((playlist) => ({
       id: playlist.id,
@@ -1289,7 +1315,7 @@ async function loadData(options = {}) {
     }));
   } else {
     state.songs = (await localAll("songs"))
-      .map((song) => ({ ...song, artist: song.artist || "" }))
+      .map((song) => ({ ...song, artist: song.artist || "", url: song.url || "", storagePath: song.storagePath || "" }))
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     state.playlists = (await localAll("playlists")).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   }
@@ -1359,18 +1385,34 @@ async function deleteSupabaseStorage(path, bucket = "songs") {
 }
 
 async function uploadSong(file, onProgress = () => {}) {
+  return addSong({
+    title: file.name.replace(/\.[^.]+$/, ""),
+    artist: state.artist || "未知歌手",
+    file,
+    onProgress,
+  });
+}
+
+async function addSong({ title, artist, file = null, onProgress = () => {} }) {
   const song = {
     id: uid(),
     room: state.room,
-    title: file.name.replace(/\.[^.]+$/, ""),
-    artist: state.artist || "未知歌手",
+    title: title.trim(),
+    artist: artist.trim() || "未知歌手",
     createdAt: new Date().toISOString(),
   };
 
   if (state.cloud) {
-    const path = `${storageSafeSegment(state.room)}/${song.id}.${fileExtension(file.name)}`;
-    await uploadToSupabaseStorage("songs", path, file, onProgress);
-    const publicUrl = `${state.supabaseUrl}/storage/v1/object/public/songs/${encodeStoragePath(path)}`;
+    let path = "";
+    let publicUrl = "";
+    if (file) {
+      path = `${storageSafeSegment(state.room)}/${song.id}.${fileExtension(file.name)}`;
+      await uploadToSupabaseStorage("songs", path, file, onProgress);
+      publicUrl = `${state.supabaseUrl}/storage/v1/object/public/songs/${encodeStoragePath(path)}`;
+    } else {
+      onProgress(100);
+    }
+
     await supabaseRest("songs", {
       method: "POST",
       headers: { Prefer: "return=minimal" },
@@ -1384,8 +1426,35 @@ async function uploadSong(file, onProgress = () => {}) {
       }),
     });
   } else {
+    if (file) {
+      song.blob = file;
+      song.url = URL.createObjectURL(file);
+      song.storagePath = file.name;
+    } else {
+      song.url = "";
+      song.storagePath = "";
+    }
+    onProgress(100);
+    await localPut("songs", song);
+  }
+}
+
+async function uploadAudioForSong(song, file, onProgress = () => {}) {
+  if (!file) return;
+
+  if (state.cloud) {
+    const path = `${storageSafeSegment(state.room)}/${song.id}.${fileExtension(file.name)}`;
+    await uploadToSupabaseStorage("songs", path, file, onProgress, true);
+    const publicUrl = `${state.supabaseUrl}/storage/v1/object/public/songs/${encodeStoragePath(path)}`;
+    await supabaseRest(`songs?id=eq.${song.id}`, {
+      method: "PATCH",
+      headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({ storage_path: path, public_url: publicUrl }),
+    });
+  } else {
     song.blob = file;
     song.url = URL.createObjectURL(file);
+    song.storagePath = file.name;
     onProgress(100);
     await localPut("songs", song);
   }
@@ -1623,7 +1692,7 @@ function playbackMeta(song) {
 
 function queueSongs() {
   if (!state.playQueue) return [];
-  return state.playQueue.songIds.map((id) => state.songs.find((song) => song.id === id)).filter(Boolean);
+  return state.playQueue.songIds.map((id) => state.songs.find((song) => song.id === id)).filter((song) => song?.url || song?.blob);
 }
 
 function canUseQueueControls() {
@@ -1661,6 +1730,7 @@ function seekAudio(event) {
 }
 
 function playSong(song, options = {}) {
+  if (!song.url && !song.blob) return;
   if (options.clearQueue !== false) {
     state.playQueue = null;
   }
@@ -1674,16 +1744,20 @@ function playSong(song, options = {}) {
 }
 
 function setQueueContextForSong(song, name, songs) {
-  const index = songs.findIndex((item) => item.id === song.id);
+  const playableSongs = songs.filter((item) => item.url || item.blob);
+  const index = playableSongs.findIndex((item) => item.id === song.id);
   state.playQueue = {
     id: name,
     name,
     mode: state.playMode,
-    songIds: songs.map((item) => item.id),
+    songIds: playableSongs.map((item) => item.id),
     currentIndex: Math.max(0, index),
   };
   if (state.currentSong?.id === song.id) {
     els.currentMeta.textContent = playbackMeta(song);
+  }
+  if (!state.playQueue.songIds.length) {
+    state.playQueue = null;
   }
   updatePlayerControls();
 }
@@ -1696,16 +1770,17 @@ function playSongInCollection(song, name, songs) {
 function setPlaybackMode(name, songs, mode) {
   state.playMode = mode;
   localStorage.setItem("playMode", mode);
+  const playableSongs = songs.filter((song) => song.url || song.blob);
 
   state.playQueue = {
     id: name,
     name,
     mode,
-    songIds: songs.map((song) => song.id),
-    currentIndex: state.currentSong ? songs.findIndex((song) => song.id === state.currentSong.id) : -1,
+    songIds: playableSongs.map((song) => song.id),
+    currentIndex: state.currentSong ? playableSongs.findIndex((song) => song.id === state.currentSong.id) : -1,
   };
 
-  if (!songs.length) {
+  if (!playableSongs.length) {
     state.playQueue = null;
   }
 
@@ -1718,7 +1793,7 @@ function setPlaybackMode(name, songs, mode) {
 function playNextInQueue() {
   if (!state.playQueue) return;
 
-  const songs = state.playQueue.songIds.map((id) => state.songs.find((song) => song.id === id)).filter(Boolean);
+  const songs = queueSongs();
   if (!songs.length) {
     resetPlayer();
     return;
@@ -1804,6 +1879,7 @@ function updatePlayingRows() {
 }
 
 function handleSongCardClick(song, name, songs) {
+  if (!song.url && !song.blob) return;
   const isCurrent = state.currentSong?.id === song.id;
   if (isCurrent) {
     setQueueContextForSong(song, name, songs);
@@ -1858,7 +1934,7 @@ function updatePlaybackButtonStates() {
 
 function bindPlaybackButtons(container, getSongs, name, stopSummary = false) {
   container.querySelectorAll(".icon-button").forEach((button) => {
-    button.disabled = !getSongs().length;
+    button.disabled = !getSongs().some((song) => song.url || song.blob);
     button.classList.toggle("active", button.dataset.mode === state.playMode);
     button.addEventListener("click", (event) => {
       event.preventDefault();
@@ -1998,13 +2074,16 @@ function renderSong(song, context = {}) {
   const collectionName = context.collectionName || "共享曲库";
   const getSongs = context.getSongs || (() => state.songs);
   const isPlaylistSong = Boolean(context.playlist);
+  const hasAudio = Boolean(song.url || song.blob);
   const row = document.createElement("article");
   row.className = "song-row";
+  row.classList.toggle("is-missing-audio", !hasAudio);
   row.dataset.songId = song.id;
   row.innerHTML = `
     <div>
       <div class="song-title"><span class="song-status"></span><span class="song-title-text"></span></div>
       <div class="song-meta"></div>
+      <button class="ghost-button compact upload-audio-button" type="button" hidden>上传歌曲</button>
     </div>
     <button class="song-menu-button" type="button" data-action="menu" title="更多" aria-label="更多操作">...</button>
     <div class="song-menu" hidden>
@@ -2021,7 +2100,15 @@ function renderSong(song, context = {}) {
     </div>
   `;
   row.querySelector(".song-title-text").textContent = song.title;
-  row.querySelector(".song-meta").textContent = song.artist || "未知歌手";
+  row.querySelector(".song-meta").textContent = hasAudio ? song.artist || "未知歌手" : `${song.artist || "未知歌手"} · 待上传音频`;
+  const uploadAudioButton = row.querySelector(".upload-audio-button");
+  if (!hasAudio) {
+    uploadAudioButton.hidden = false;
+    uploadAudioButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      showAudioUploadForSong(song);
+    });
+  }
 
   row.addEventListener("click", () => handleSongCardClick(song, collectionName, getSongs()));
   row.querySelector('[data-action="menu"]').addEventListener("click", (event) => {
@@ -2086,7 +2173,7 @@ function render() {
   els.playlistGrid.innerHTML = "";
 
   if (!state.songs.length) {
-    els.songList.innerHTML = '<div class="empty">还没有上传歌曲。</div>';
+    els.songList.innerHTML = '<div class="empty">还没有添加歌曲。</div>';
   } else {
     state.songs.forEach((song) => els.songList.append(renderSong(song)));
   }
@@ -2222,25 +2309,58 @@ function bindEvents() {
 
   els.uploadForm.addEventListener("submit", async (event) => {
     event.preventDefault();
-    const files = [...els.musicFile.files];
-    if (!files.length) return;
-    const statuses = files.map(() => ({ progress: 0, label: "等待上传", state: "idle" }));
+    const file = els.musicFile.files[0] || null;
+    const title = els.songTitleInput.value.trim() || file?.name.replace(/\.[^.]+$/, "");
+    const artist = els.artistName.value.trim() || "未知歌手";
+    if (!pendingAudioSongId) setArtist(artist);
+    if (!title) {
+      els.modeNote.textContent = "请先填写歌曲名，或者选择一个音乐文件。";
+      return;
+    }
+    if (pendingAudioSongId && !file) {
+      els.modeNote.textContent = "请选择要上传的音乐文件。";
+      return;
+    }
+    const files = file ? [file] : [];
+    const statuses = files.map(() => ({ progress: 0, label: pendingAudioSongId ? "等待上传音频" : "等待上传", state: "idle" }));
     els.uploadButton.disabled = true;
-    els.uploadButton.textContent = "上传中...";
+    els.uploadButton.textContent = file ? "上传中..." : "添加中...";
     renderSelectedFiles(files, statuses);
 
     try {
-      for (const [index, file] of files.entries()) {
-        statuses[index] = { progress: 0, label: `正在上传 ${index + 1}/${files.length}`, state: "uploading" };
+      if (pendingAudioSongId) {
+        const song = state.songs.find((item) => item.id === pendingAudioSongId);
+        if (!song) throw new Error("这首歌不在曲库里。");
+        statuses[0] = { progress: 0, label: "正在上传音频", state: "uploading" };
         renderSelectedFiles(files, statuses);
-        await uploadSong(file, (progress) => {
-          statuses[index] = { progress, label: `正在上传 ${index + 1}/${files.length} · ${progress}%`, state: "uploading" };
+        await uploadAudioForSong(song, file, (progress) => {
+          statuses[0] = { progress, label: `正在上传音频 · ${progress}%`, state: "uploading" };
           renderSelectedFiles(files, statuses);
         });
-        statuses[index] = { progress: 100, label: "上传完成", state: "done" };
+        statuses[0] = { progress: 100, label: "上传完成", state: "done" };
         renderSelectedFiles(files, statuses);
+      } else {
+        if (file) {
+          statuses[0] = { progress: 0, label: "正在上传音频", state: "uploading" };
+          renderSelectedFiles(files, statuses);
+        }
+        await addSong({
+          title,
+          artist,
+          file,
+          onProgress: (progress) => {
+            if (!file) return;
+            statuses[0] = { progress, label: `正在上传音频 · ${progress}%`, state: "uploading" };
+            renderSelectedFiles(files, statuses);
+          },
+        });
+        if (file) {
+          statuses[0] = { progress: 100, label: "上传完成", state: "done" };
+          renderSelectedFiles(files, statuses);
+        }
       }
       els.musicFile.value = "";
+      els.songTitleInput.value = "";
       await loadData();
       showLibraryPage();
     } catch (error) {
@@ -2253,7 +2373,7 @@ function bindEvents() {
       console.error(error);
     } finally {
       els.uploadButton.disabled = false;
-      els.uploadButton.textContent = "上传到曲库";
+      els.uploadButton.textContent = pendingAudioSongId ? "上传歌曲" : "添加到曲库";
     }
   });
 
