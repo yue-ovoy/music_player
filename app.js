@@ -89,7 +89,6 @@ const els = {
   musicFile: document.querySelector("#music-file"),
   selectedFiles: document.querySelector("#selected-files"),
   uploadButton: document.querySelector("#upload-form button"),
-  clearRoomButton: document.querySelector("#clear-room-button"),
   modeNote: document.querySelector("#mode-note"),
   audio: document.querySelector("#audio-player"),
   previousButton: document.querySelector("#previous-button"),
@@ -2304,7 +2303,6 @@ function bindEvents() {
   els.openUploadButton.addEventListener("click", showUploadPage);
   els.backToLibraryButton.addEventListener("click", showLibraryPage);
   els.artistName.addEventListener("change", (event) => setArtist(event.target.value));
-  els.clearRoomButton.addEventListener("click", clearRoom);
   els.musicFile.addEventListener("change", () => renderSelectedFiles([...els.musicFile.files]));
 
   els.uploadForm.addEventListener("submit", async (event) => {
