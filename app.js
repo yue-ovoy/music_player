@@ -1139,6 +1139,7 @@ function resetPostComposer() {
 function showPostComposer() {
   els.postComposer.hidden = false;
   els.composePostButton.hidden = true;
+  els.postsPanel.classList.add("is-composing");
   requestAnimationFrame(() => {
     els.postBody.focus({ preventScroll: true });
   });
@@ -1147,6 +1148,7 @@ function showPostComposer() {
 function hidePostComposer({ clear = false } = {}) {
   els.postComposer.hidden = true;
   els.composePostButton.hidden = false;
+  els.postsPanel.classList.remove("is-composing");
   if (clear) resetPostComposer();
 }
 

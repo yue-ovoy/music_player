@@ -312,6 +312,10 @@ body.posts-view .posts-panel {
   grid-template-rows: auto auto minmax(0, 1fr);
 }
 
+.posts-panel.is-composing {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
 .post-composer {
   margin-bottom: 10px;
 }
@@ -383,8 +387,9 @@ body.posts-view .posts-panel {
 
 .compose-post-button {
   position: absolute;
-  right: 18px;
+  left: 50%;
   bottom: max(18px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
   width: 54px;
   height: 54px;
   display: grid;
@@ -413,6 +418,10 @@ body.posts-view .posts-panel {
   padding: 4px 2px 76px;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
+}
+
+.posts-panel.is-composing .post-list {
+  display: none;
 }
 
 .post-card {
@@ -464,10 +473,12 @@ body.posts-view .posts-panel {
 }
 
 .post-image {
-  width: 100%;
+  width: auto;
+  max-width: 100%;
   max-height: 240px;
+  justify-self: center;
   border-radius: 8px;
-  object-fit: cover;
+  object-fit: contain;
   cursor: zoom-in;
 }
 
