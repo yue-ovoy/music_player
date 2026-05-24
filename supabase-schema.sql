@@ -48,6 +48,7 @@ create table if not exists public.posts (
 create table if not exists public.post_comments (
   id uuid primary key,
   post_id uuid not null references public.posts(id) on delete cascade,
+  parent_comment_id uuid references public.post_comments(id) on delete cascade,
   room_code text not null,
   author_id text not null,
   author_name text not null,
@@ -61,8 +62,10 @@ create index if not exists messages_room_code_idx on public.messages (room_code,
 create index if not exists posts_room_code_idx on public.posts (room_code, created_at desc);
 create index if not exists post_comments_room_code_idx on public.post_comments (room_code, created_at asc);
 create index if not exists post_comments_post_id_idx on public.post_comments (post_id, created_at asc);
+create index if not exists post_comments_parent_comment_id_idx on public.post_comments (parent_comment_id, created_at asc);
 
 alter table public.songs add column if not exists artist text;
+alter table public.post_comments add column if not exists parent_comment_id uuid references public.post_comments(id) on delete cascade;
 
 alter table public.songs enable row level security;
 alter table public.playlists enable row level security;

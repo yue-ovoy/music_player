@@ -892,6 +892,10 @@ function commentsForPost(postId) {
   return state.postComments.filter((comment) => comment.postId === postId);
 }
 
+function childComments(parentCommentId) {
+  return state.postComments.filter((comment) => comment.parentCommentId === parentCommentId);
+}
+
 async function loadPosts() {
   if (!state.cloud) {
     state.posts = [];
@@ -920,6 +924,7 @@ async function loadPosts() {
     state.postComments = comments.map((comment) => ({
       id: comment.id,
       postId: comment.post_id,
+      parentCommentId: comment.parent_comment_id || "",
       room: comment.room_code,
       authorId: comment.author_id,
       authorName: comment.author_name,
@@ -995,6 +1000,7 @@ async function createPostComment(postId, input, button) {
   const body = input.value.trim();
   if (!body || !state.cloud) return;
   const profile = currentProfile();
+  const parentCommentId = input.dataset.parentCommentId || null;
 
   button.disabled = true;
   try {
@@ -1007,10 +1013,13 @@ async function createPostComment(postId, input, button) {
         room_code: state.room,
         author_id: profile.id,
         author_name: profile.displayName,
+        parent_comment_id: parentCommentId,
         body,
       }),
     });
     input.value = "";
+    delete input.dataset.parentCommentId;
+    input.placeholder = "写评论";
     await loadPosts();
   } catch (error) {
     els.postStatus.textContent = `评论失败：${error.message}`;
@@ -1051,6 +1060,55 @@ async function deletePostComment(comment) {
     els.postStatus.textContent = `删除评论失败：${error.message}`;
     console.error(error);
   }
+}
+
+function setCommentReplyTarget(form, comment, profile) {
+  const input = form.querySelector("input");
+  input.dataset.parentCommentId = comment.id;
+  input.placeholder = `回复 ${profile.displayName}`;
+  input.focus();
+}
+
+function renderComment(comment, form, isReply = false) {
+  const commentProfile = profileForId(comment.authorId, comment.authorName);
+  const row = document.createElement("div");
+  row.className = `comment-row${isReply ? " is-reply" : ""}`;
+  row.innerHTML = `
+    <img alt="" />
+    <div>
+      <strong></strong>
+      <p class="comment-text"></p>
+      <div class="comment-actions">
+        <button type="button" data-action="reply">回复</button>
+      </div>
+      <div class="comment-replies"></div>
+    </div>
+    <button class="comment-delete-button" type="button" hidden>删除</button>
+  `;
+  row.querySelector("img").src = commentProfile.avatarUrl || avatarDataUrl(commentProfile.displayName);
+  row.querySelector("strong").textContent = commentProfile.displayName;
+  row.querySelector(".comment-text").textContent = comment.body;
+  row.querySelector('[data-action="reply"]').addEventListener("click", () => setCommentReplyTarget(form, comment, commentProfile));
+
+  const commentDeleteButton = row.querySelector(".comment-delete-button");
+  if (comment.authorId === state.currentProfileId) {
+    commentDeleteButton.hidden = false;
+    commentDeleteButton.addEventListener("click", () => deletePostComment(comment));
+  }
+
+  const replies = row.querySelector(".comment-replies");
+  if (isReply) {
+    replies.remove();
+  } else {
+    const children = childComments(comment.id);
+    if (!children.length) {
+      replies.remove();
+    } else {
+      children.forEach((reply) => replies.append(renderComment(reply, form, true)));
+    }
+  }
+
+  return row;
 }
 
 function renderPostCard(post) {
@@ -1096,35 +1154,16 @@ function renderPostCard(post) {
   }
 
   const commentList = card.querySelector(".comment-list");
-  const comments = commentsForPost(post.id);
+  const form = card.querySelector(".comment-form");
+  const comments = commentsForPost(post.id).filter((comment) => !comment.parentCommentId);
   if (!comments.length) {
     commentList.hidden = true;
   } else {
     comments.forEach((comment) => {
-      const commentProfile = profileForId(comment.authorId, comment.authorName);
-      const row = document.createElement("div");
-      row.className = "comment-row";
-      row.innerHTML = `
-        <img alt="" />
-        <div>
-          <strong></strong>
-          <p class="comment-text"></p>
-        </div>
-        <button class="comment-delete-button" type="button" hidden>删除</button>
-      `;
-      row.querySelector("img").src = commentProfile.avatarUrl || avatarDataUrl(commentProfile.displayName);
-      row.querySelector("strong").textContent = commentProfile.displayName;
-      row.querySelector(".comment-text").textContent = comment.body;
-      const commentDeleteButton = row.querySelector(".comment-delete-button");
-      if (comment.authorId === state.currentProfileId) {
-        commentDeleteButton.hidden = false;
-        commentDeleteButton.addEventListener("click", () => deletePostComment(comment));
-      }
-      commentList.append(row);
+      commentList.append(renderComment(comment, form));
     });
   }
 
-  const form = card.querySelector(".comment-form");
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     createPostComment(post.id, form.querySelector("input"), form.querySelector("button"));

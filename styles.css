@@ -454,12 +454,22 @@ body.posts-view .posts-panel {
   align-items: start;
 }
 
+.comment-row.is-reply {
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  margin-left: 43px;
+}
+
 .post-author img,
 .comment-row img {
   width: 34px;
   height: 34px;
   border-radius: 50%;
   object-fit: cover;
+}
+
+.comment-row.is-reply img {
+  width: 28px;
+  height: 28px;
 }
 
 .post-author strong,
@@ -491,6 +501,28 @@ body.posts-view .posts-panel {
 .post-delete-button[hidden],
 .comment-delete-button[hidden] {
   display: none;
+}
+
+.comment-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 3px;
+}
+
+.comment-actions button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.comment-replies {
+  display: grid;
+  gap: 8px;
+  margin-top: 9px;
 }
 
 .post-text,
