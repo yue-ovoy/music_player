@@ -10,9 +10,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.jpg" />
-    <link rel="stylesheet" href="./styles.css?v=20260524-post-delete" />
+    <link rel="stylesheet" href="./styles.css?v=20260524-paper-note" />
     <script src="./config.js"></script>
-    <script type="module" src="./app.js?v=20260524-post-delete"></script>
+    <script type="module" src="./app.js?v=20260524-paper-note"></script>
   </head>
   <body>
     <main class="shell">
@@ -99,7 +99,7 @@
       <section class="panel posts-panel" id="posts-panel" hidden>
         <div class="section-bar chat-topbar">
           <button class="ghost-button" id="close-posts-button" type="button">返回</button>
-          <h3>小记</h3>
+          <h3>小纸条</h3>
           <span aria-hidden="true"></span>
         </div>
 
@@ -111,6 +111,7 @@
               <span>添加图片</span>
               <strong id="post-image-name"></strong>
             </label>
+            <img class="post-image-preview" id="post-image-preview" alt="" hidden />
             <div class="post-form-actions">
               <button class="ghost-button" id="cancel-post-button" type="button">取消</button>
               <button class="primary-button" id="publish-post-button" type="submit">发布</button>
@@ -120,7 +121,7 @@
 
         <p class="post-status" id="post-status"></p>
         <div class="post-list" id="post-list" aria-live="polite"></div>
-        <button class="compose-post-button" id="compose-post-button" type="button" title="发布小记" aria-label="发布小记">+</button>
+        <button class="compose-post-button" id="compose-post-button" type="button" title="发布小纸条" aria-label="发布小纸条">+</button>
       </section>
 
       <div class="image-viewer" id="image-viewer" hidden>

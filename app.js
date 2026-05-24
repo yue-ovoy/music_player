@@ -71,6 +71,7 @@ const els = {
   postBody: document.querySelector("#post-body"),
   postImageFile: document.querySelector("#post-image-file"),
   postImageName: document.querySelector("#post-image-name"),
+  postImagePreview: document.querySelector("#post-image-preview"),
   publishPostButton: document.querySelector("#publish-post-button"),
   postStatus: document.querySelector("#post-status"),
   postList: document.querySelector("#post-list"),
@@ -121,6 +122,8 @@ const cropState = {
   startOffsetY: 0,
   reader: null,
 };
+
+let postPreviewUrl = "";
 
 function uid() {
   return crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -1019,7 +1022,7 @@ async function createPostComment(postId, input, button) {
 
 async function deletePost(post) {
   if (post.authorId !== state.currentProfileId) return;
-  if (!confirm("确定删除这条小记吗？评论也会一起删除。")) return;
+  if (!confirm("确定删除这张小纸条吗？评论也会一起删除。")) return;
 
   try {
     if (post.imagePath) await deleteSupabaseStorage(post.imagePath, "post-images");
@@ -1143,7 +1146,7 @@ function renderPosts() {
   els.postList.innerHTML = "";
 
   if (!state.posts.length) {
-    els.postList.innerHTML = '<div class="chat-empty">还没有小记。</div>';
+    els.postList.innerHTML = '<div class="chat-empty">还没有小纸条。</div>';
     return;
   }
 
@@ -1174,11 +1177,29 @@ function closeImageViewer() {
   els.imageViewerImg.removeAttribute("src");
 }
 
+function clearPostImagePreview() {
+  if (postPreviewUrl) URL.revokeObjectURL(postPreviewUrl);
+  postPreviewUrl = "";
+  els.postImagePreview.hidden = true;
+  els.postImagePreview.removeAttribute("src");
+}
+
+function updatePostImagePreview(file) {
+  clearPostImagePreview();
+  els.postImageName.textContent = file ? file.name : "";
+  if (!file) return;
+
+  postPreviewUrl = URL.createObjectURL(file);
+  els.postImagePreview.src = postPreviewUrl;
+  els.postImagePreview.hidden = false;
+}
+
 function resetPostComposer() {
   els.postBody.value = "";
   els.postImageFile.value = "";
   els.postImageName.textContent = "";
   els.postStatus.textContent = "";
+  clearPostImagePreview();
 }
 
 function showPostComposer() {
@@ -2129,7 +2150,7 @@ function bindEvents() {
   els.cancelPostButton.addEventListener("click", () => hidePostComposer({ clear: true }));
   els.postImageFile.addEventListener("change", () => {
     const file = els.postImageFile.files[0];
-    els.postImageName.textContent = file ? file.name : "";
+    updatePostImagePreview(file);
   });
   els.postForm.addEventListener("submit", async (event) => {
     event.preventDefault();

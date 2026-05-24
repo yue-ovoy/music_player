@@ -378,6 +378,18 @@ body.posts-view .posts-panel {
   white-space: nowrap;
 }
 
+.post-image-preview {
+  width: min(180px, 66%);
+  max-height: 180px;
+  border-radius: 8px;
+  object-fit: contain;
+  background: rgba(255, 250, 242, 0.76);
+}
+
+.post-image-preview[hidden] {
+  display: none;
+}
+
 .post-form-actions {
   display: grid;
   grid-template-columns: auto minmax(120px, 1fr);
