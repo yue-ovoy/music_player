@@ -437,6 +437,7 @@ body.posts-view .posts-panel {
 }
 
 .post-card {
+  --post-content-offset: 43px;
   display: grid;
   gap: 10px;
   border: 1px solid var(--line);
@@ -501,11 +502,15 @@ body.posts-view .posts-panel {
   font-weight: 700;
 }
 
+.post-text {
+  margin-left: var(--post-content-offset);
+}
+
 .post-image {
   width: 66%;
   max-width: 66%;
   max-height: 240px;
-  justify-self: start;
+  margin-left: var(--post-content-offset);
   border-radius: 8px;
   object-fit: contain;
   cursor: zoom-in;
