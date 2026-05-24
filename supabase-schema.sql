@@ -87,6 +87,12 @@ create policy "Anyone can add songs"
 on public.songs for insert
 with check (true);
 
+drop policy if exists "Anyone can update songs" on public.songs;
+create policy "Anyone can update songs"
+on public.songs for update
+using (true)
+with check (true);
+
 drop policy if exists "Anyone can read playlists by room code" on public.playlists;
 create policy "Anyone can read playlists by room code"
 on public.playlists for select
