@@ -1085,27 +1085,109 @@ h1 {
   aspect-ratio: 1;
   display: grid;
   place-items: center;
-  border-radius: 50%;
+  border-radius: 8px;
   background:
-    repeating-radial-gradient(circle, #1b1715 0 6px, #292421 7px 8px),
-    #1b1715;
-  box-shadow: inset 0 0 0 8px rgba(255, 255, 255, 0.05), 0 20px 40px rgba(0, 0, 0, 0.22);
+    radial-gradient(circle at 50% 18%, rgba(255, 247, 208, 0.22), transparent 26%),
+    linear-gradient(145deg, rgba(255, 250, 242, 0.1), rgba(255, 250, 242, 0.02));
+  box-shadow: inset 0 0 0 1px rgba(255, 250, 242, 0.08), 0 20px 40px rgba(0, 0, 0, 0.18);
 }
 
-.record-core {
-  width: 42px;
-  aspect-ratio: 1;
-  border-radius: 50%;
-  background: var(--sun);
+.cake {
+  position: relative;
+  width: 96px;
+  height: 104px;
 }
 
-.is-playing .record {
-  animation: spin 4.8s linear infinite;
+.candle {
+  position: absolute;
+  left: 50%;
+  top: 1px;
+  width: 10px;
+  height: 32px;
+  border-radius: 999px;
+  background: repeating-linear-gradient(45deg, #fffaf2 0 5px, #f3b84b 5px 9px);
+  transform: translateX(-50%);
+  z-index: 3;
 }
 
-@keyframes spin {
+.flame {
+  position: absolute;
+  left: 50%;
+  top: -15px;
+  width: 16px;
+  height: 22px;
+  border-radius: 50% 50% 45% 45%;
+  background: radial-gradient(circle at 50% 68%, #fff8c7 0 26%, #f3b84b 28% 58%, #c95169 62% 100%);
+  box-shadow: 0 0 18px rgba(243, 184, 75, 0.7);
+  transform: translateX(-50%);
+}
+
+.cake-top {
+  position: absolute;
+  left: 8px;
+  top: 34px;
+  width: 80px;
+  height: 22px;
+  border-radius: 999px;
+  background: #fff0f3;
+  box-shadow: inset 0 -5px 0 rgba(201, 81, 105, 0.14);
+  z-index: 2;
+}
+
+.cake-body {
+  position: absolute;
+  left: 14px;
+  top: 48px;
+  width: 68px;
+  height: 42px;
+  overflow: hidden;
+  border-radius: 0 0 8px 8px;
+  background: linear-gradient(180deg, #f7cbd3, #c95169);
+}
+
+.cake-body span {
+  position: absolute;
+  top: 0;
+  width: 14px;
+  height: 18px;
+  border-radius: 0 0 999px 999px;
+  background: #fff0f3;
+}
+
+.cake-body span:nth-child(1) {
+  left: 8px;
+}
+
+.cake-body span:nth-child(2) {
+  left: 28px;
+  height: 24px;
+}
+
+.cake-body span:nth-child(3) {
+  left: 50px;
+}
+
+.cake-plate {
+  position: absolute;
+  left: 2px;
+  top: 87px;
+  width: 92px;
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(255, 250, 242, 0.92);
+}
+
+.is-playing .flame {
+  animation: candle-flicker 1.1s ease-in-out infinite alternate;
+}
+
+@keyframes candle-flicker {
+  from {
+    transform: translateX(-50%) scale(0.92) rotate(-4deg);
+  }
+
   to {
-    transform: rotate(360deg);
+    transform: translateX(-50%) scale(1.06) rotate(4deg);
   }
 }
 
